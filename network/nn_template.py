@@ -3,22 +3,22 @@ import tensorflow as tf
 
 class NNTemplate:
 
-    def inference(self):
+    def _inference(self):
         raise NotImplementedError
 
-    def loss(self):
+    def _loss(self):
         raise NotImplementedError
 
-    def optimize(self):
+    def optimize(self, epochs):
         raise NotImplementedError
 
-    def save(self):
+    def save(self, path, name):
         raise NotImplementedError
 
-    def restore(self):
+    def restore(self, path, meta):
         raise NotImplementedError
 
-    def create_conv_layer(self, x, w_shape, name, strides=[1, 1, 1, 1], weight_init='Normal'):
+    def _create_conv_layer(self, x, w_shape, name, strides=[1, 1, 1, 1], weight_init='Normal'):
         """
         This method will create a convolutional layer with specified parameters.
         :param x: input of the convolutional layer.
@@ -30,7 +30,7 @@ class NNTemplate:
         """
         if weight_init != 'Normal':
             # Change print to logger
-            print("Different types of weights initialization is not yet supported")
+            tf.logging.warning("Different types of weights initialization is not yet supported")
 
         with tf.name_scope(name):
             w = tf.Variable(tf.truncated_normal(w_shape, stddev=0.1), name='weights')
@@ -38,9 +38,10 @@ class NNTemplate:
             conv = tf.nn.conv2d(x, w, strides=strides, padding='SAME')
             tf.summary.histogram('weights', w)
             tf.summary.histogram('biases', b)
-        return conv + b
+            out = tf.add(conv, b, name='output')
+        return out
 
-    def create_fc_layer(self, x, shape, name):
+    def _create_fc_layer(self, x, shape, name):
         """
         This method will create fully connected layer with specified parameters
         :param x: input of the fully connected layer
@@ -50,12 +51,13 @@ class NNTemplate:
         """
         with tf.name_scope(name):
             w = tf.Variable(tf.truncated_normal(shape, stddev=0.1), name="weights")
-            b = tf.Variable(tf.constant(0.1, shape=shape[1]), name="biases")
+            b = tf.Variable(tf.constant(0.1, shape=[shape[1]]), name="biases")
             tf.summary.histogram("weights", w)
             tf.summary.histogram("biases", b)
-        return tf.matmul(x, w) + b
+            out = tf.add(tf.matmul(x, w), b, name='output')
+        return out
 
-    def create_activation(self, x, act_type, alpha=0.2):
+    def _create_activation(self, x,act_type, alpha=0.2):
         """
         This method will create activation function
         :param x: input of the activation function
@@ -64,20 +66,26 @@ class NNTemplate:
         :return: activation
         """
         if act_type == 'ReLU':
-            act = tf.nn.relu(x)
+            act = tf.nn.relu(x, name='ReLU')
             tf.summary.histogram('ReLU', act)
             return act
         elif act_type == 'leaky':
-            act = tf.nn.leaky_relu(x, alpha)
+            act = tf.nn.leaky_relu(x, alpha, name='Leaky_ReLU')
             tf.summary.histogram('Leaky ReLU', act)
             return act
         else:
-            # Change print to logger
-            print('Wrong name for activation func was used. ReLU will be used as default')
-            act = tf.nn.relu(x)
+            tf.logging.warning('Wrong name for activation func was used. ReLU will be used as default')
+            act = tf.nn.relu(x, name='ReLU')
             tf.summary.histogram('ReLU', act)
             return act
 
-    def create_pooling_layer(self, x, kernel, stride):
-        # return tf.nn.max_pool(x, kernel, stride, padding='SAME')
-        raise NotImplementedError
+    def _create_pooling_layer(self, x, kernel, stride):
+        """
+        Create max pool layer
+        :param x: input value
+        :param kernel:  A 1-D int Tensor of 4 elements. The size of the window for each dimension of the input tensor.
+        :param stride: A 1-D int Tensor of 4 elements. The stride of the sliding window for each dimension
+        of the input tensor.
+        :return: A Tensor of format specified by data_format. The max pooled output tensor.
+        """
+        return tf.nn.max_pool(x, kernel, stride, padding='SAME')

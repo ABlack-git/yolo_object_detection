@@ -73,7 +73,7 @@ class NNTemplate:
                     tf.nn.max_pool(out, pool_param.get('kernel'), pool_param.get('strides'), pool_param.get('padding'))
         return out
 
-    def create_fc_layer(self, x, shape, name, activation=True, dropout=False, act_params=None, dropout_param=None,
+    def create_fc_layer(self, x, shape, name, activation=True, dropout=False, act_param=None, dropout_param=None,
                         weight_init='Normal'):
         """
          This function will create fully connected layer with activation function and dropout under same
@@ -83,13 +83,13 @@ class NNTemplate:
         :param name: Name for tensorflow name scope.
         :param activation: Boolean value. If true, it will create an activation function in this layer.
         :param dropout: Boolean value. If true, it will create a dropout in this layer.
-        :param act_params: dict with keys 'type' and 'param'.
+        :param act_param: dict with keys 'type' and 'param'.
         :param dropout_param: A scalar Tensor with the same type as x. The probability that each element is kept.
         :param weight_init:
         :return:
         """
-        if activation and act_params is None:
-            act_params = {'type': 'ReLU', 'param': -1}
+        if activation and act_param is None:
+            act_param = {'type': 'ReLU', 'param': -1}
 
         if weight_init != 'Normal':
             tf.logging.warning('Currently weight initialization is supported with normal distribution. '
@@ -102,13 +102,17 @@ class NNTemplate:
             tf.summary.histogram("biases", b)
             out = tf.add(tf.matmul(x, w), b, name='output')
             if activation:
-                if act_params.get('type') == 'ReLU':
+                if act_param.get('type') == 'ReLU':
                     act = tf.nn.relu(out, name='ReLU')
                     tf.summary.histogram('ReLU', act)
                     out = act
-                elif act_params.get('type') == 'leaky':
-                    act = tf.nn.leaky_relu(out, act_params.get('param'))
+                elif act_param.get('type') == 'leaky':
+                    act = tf.nn.leaky_relu(out, act_param.get('param'), name='Leaky ReLU')
                     tf.summary.histogram('Leaky_ReLU', act)
+                    out = act
+                elif act_param.get('type') == 'sigmoid':
+                    act = tf.sigmoid(out, name='Sigmoid')
+                    tf.summary.histogram('Sigmoid', act)
                     out = act
             if dropout:
                 if dropout_param is not None:

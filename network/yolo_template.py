@@ -4,7 +4,7 @@ from network.nn_template import NNTemplate
 
 class YOLO(NNTemplate):
 
-    def __init__(self, img_w, img_h, grid_w, grid_h, no_boxes):
+    def __init__(self, img_w, img_h, grid_w, grid_h, no_boxes, scale_1, scale_2):
         self.img_size = (img_w, img_h)
         self.grid_size = (grid_w, grid_h)
         self.no_boxes = no_boxes
@@ -12,6 +12,8 @@ class YOLO(NNTemplate):
         self.predictions = None
         self.loss = None
         self.optimizer = None
+        self.corrd_scale = scale_1
+        self.noobj_scale = scale_2
 
     def inference(self, x):
         if not self.predictions:
@@ -35,7 +37,8 @@ class YOLO(NNTemplate):
             flatten = tf.reshape(conv8, [-1, 3 * 2 * 256])
             out_dim = self.grid_size[0] * self.grid_size[1] * 2 * self.no_boxes
             in_dim = 3 * 2 * 256
-            self.predictions = super().create_fc_layer(flatten, [in_dim, out_dim], 'FC_1', activation=False)
+            self.predictions = super().create_fc_layer(flatten, [in_dim, out_dim], 'FC_1', activation=True,
+                                                       act_param={'type': 'sigmoid'})
 
     def loss(self, y_pred, y_true):
         """
@@ -48,13 +51,44 @@ class YOLO(NNTemplate):
             with tf.name_scope('Loss'):
                 # reshape y_pred and y_truth to be [batch_size, grid_w*grid_h,B,5]
                 y_pred = tf.reshape(y_pred, [self.batch_size, self.grid_size[0] * self.grid_size[1], self.no_boxes, 5])
-                y_true = tf.reshape(y_true, [self.batch_size, self.grid_size[0] * self.grid_size[1], self.no_boxes, 5])
-                # prpare masks
-                is_object = tf.zeros([self.batch_size, self.grid_size[0] * self.grid_size[1], self.no_boxes])
-                no_object = tf.zeros([self.batch_size, self.grid_size[0] * self.grid_size[1], self.no_boxes])
+                y_true = tf.reshape(y_true, [self.batch_size, self.grid_size[0] * self.grid_size[1], self.no_boxes, 6])
+                # Probably something else should be here, but who the f*ck knows...
+                # BTW, maybe I can apply sigmoid func to the output of the network, to keep values between 0-1.
+                # Though problems with vanishing grad can occur.
+
                 # compute IoU
                 iou = self.tf_iou(y_true, y_pred)
-                pass
+
+                # C=P(obj)*IOU(truth, pred). This will compute confidence for every box.
+                confidence = tf.multiply(y_true[:, :, :, 4], iou)
+
+                # Create masks
+                # this (maybe) returns Batch x S*S x B tensor
+                is_obj = tf.to_float(tf.equal(iou, tf.reduce_max(iou, axis=2, keepdims=True)))
+                # elements in y_true[:,:,:,5] are all set to 1 if there is object in cell S_i.
+                is_obj = tf.multiply(is_obj, y_true[:, :, :, 5])
+
+                no_obj = tf.to_float(tf.not_equal(is_obj, 1))
+
+                # Loss
+                xy_loss = self.corrd_scale * tf.reduce_sum(
+                    is_obj * (tf.pow(y_pred[:, :, :, 0] - y_true[:, :, :, 0], 2) +
+                              tf.pow(y_pred[:, :, :, 1] - y_true[:, :, :, 1], 2)))
+                wh_loss = self.corrd_scale * tf.reduce_sum(
+                    is_obj * (tf.pow(y_pred[:, :, :, 2] - y_true[:, :, :, 2], 2) +
+                              tf.pow(y_pred[:, :, :, 3] - y_true[:, :, :, 3], 2)))
+                c_obj_loss = tf.reduce_sum(
+                    is_obj * (tf.pow(y_pred[:, :, :, 4] - confidence, 2)))
+                c_noobj_loss = self.noobj_scale * tf.reduce_sum(
+                    no_obj * (tf.pow(y_pred[:, :, :, 4] - confidence, 2)))
+
+                tf.summary.scalar('Coordinates loss', xy_loss)
+                tf.summary.scalar('Width-height loss', wh_loss)
+                tf.summary.scalar('Object confidence loss', c_obj_loss)
+                tf.summary.scalar('No object confidence loss', c_noobj_loss)
+
+                self.loss = xy_loss + wh_loss + c_obj_loss + c_noobj_loss
+                tf.summary.scalar('Total loss', self.loss)
 
     def tf_iou(self, y_true, y_pred):
         """
@@ -92,6 +126,10 @@ class YOLO(NNTemplate):
             union = tf.subtract(tf.add(area_1, area_b), intersection, name='Union')
 
         return tf.truediv(intersection, union, name='IoU')
+
+    def get_predictions(self, x):
+        if self.predictions is not None:
+            pass
 
     def optimize(self, epochs):
         raise NotImplementedError

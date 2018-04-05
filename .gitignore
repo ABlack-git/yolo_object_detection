@@ -1,3 +1,5 @@
 **/__pycache__
 .idea/
+network/MNIST/*
 network/MNIST
+network/testing_tf.py

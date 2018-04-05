@@ -1,7 +1,7 @@
 import tensorflow as tf
 import os
+from network.nn_template import NNTemplate
 from tensorflow.examples.tutorials.mnist import input_data
-from network.MNIST.nn_template import NNTemplate
 
 
 class MnistNN(NNTemplate):
@@ -153,7 +153,7 @@ class MnistNN(NNTemplate):
             self.optimizer = tf.get_default_graph().get_operation_by_name('train/Optimizer')
             self.global_step = tf.get_default_graph().get_tensor_by_name('global_step:0')
         except KeyError as e:
-            tf.logging.fatal("Restoring was not successful.")
+            tf.logging.fatal("Restoring was not successful. KeyError exception was raised.")
             tf.logging.fatal(e)
             exit(1)
 

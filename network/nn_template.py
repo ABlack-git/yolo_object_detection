@@ -1,21 +1,28 @@
 import tensorflow as tf
 
 
-class NNTemplate:
+class ANN:
+    def __init__(self):
+        self.summary_list = []
+        self.predictions = None
+        self.loss = None
+        self.global_step = None
+        self.x = None
+        self.y_true = None
 
     def inference(self, x):
         raise NotImplementedError
 
-    def loss(self, predictions, labels):
+    def loss_func(self, predictions, labels):
         raise NotImplementedError
 
     def optimize(self, epochs):
         raise NotImplementedError
 
-    def save(self, sess, path, name):
+    def save(self, path, name):
         raise NotImplementedError
 
-    def restore(self, sess, path, meta):
+    def restore(self, path, meta):
         raise NotImplementedError
 
     def create_conv_layer(self, x, w_shape, name, strides=None, activation=True, pooling=True, act_param=None,
@@ -56,21 +63,23 @@ class NNTemplate:
             w = tf.Variable(tf.truncated_normal(w_shape, stddev=0.1), name='weights')
             b = tf.Variable(tf.constant(0.1, shape=[w_shape[3]]), name='biases')
             conv = tf.nn.conv2d(x, w, strides=strides, padding='SAME')
-            tf.summary.histogram('weights', w)
-            tf.summary.histogram('biases', b)
+            self.summary_list.append(tf.summary.histogram('weights', w))
+            self.summary_list.append(tf.summary.histogram('biases', b))
             out = tf.add(conv, b, name='output')
             if activation:
                 if act_param.get('type') == 'ReLU':
                     act = tf.nn.relu(out, name='ReLu')
-                    tf.summary.histogram('ReLU', act)
+                    self.summary_list.append(tf.summary.histogram('ReLU', act))
                     out = act
                 elif act_param.get('type') == 'leaky':
                     act = tf.nn.leaky_relu(out, act_param.get('param'), name='Leaky_ReLU')
-                    tf.summary.histogram('Leaky_ReLU', act)
+                    self.summary_list.append(tf.summary.histogram('Leaky_ReLU', act))
                     out = act
             if pooling:
                 if pool_param.get('type') == 'max':
-                    tf.nn.max_pool(out, pool_param.get('kernel'), pool_param.get('strides'), pool_param.get('padding'))
+                    out = tf.nn.max_pool(out, pool_param.get('kernel'), pool_param.get('strides'),
+                                         pool_param.get('padding'),
+                                         name='MaxPool')
         return out
 
     def create_fc_layer(self, x, shape, name, activation=True, dropout=False, act_param=None, dropout_param=None,
@@ -98,21 +107,21 @@ class NNTemplate:
         with tf.name_scope(name):
             w = tf.Variable(tf.truncated_normal(shape, stddev=0.1), name="weights")
             b = tf.Variable(tf.constant(0.1, shape=[shape[1]]), name="biases")
-            tf.summary.histogram("weights", w)
-            tf.summary.histogram("biases", b)
+            self.summary_list.append(tf.summary.histogram("weights", w))
+            self.summary_list.append(tf.summary.histogram("biases", b))
             out = tf.add(tf.matmul(x, w), b, name='output')
             if activation:
                 if act_param.get('type') == 'ReLU':
                     act = tf.nn.relu(out, name='ReLU')
-                    tf.summary.histogram('ReLU', act)
+                    self.summary_list.append(tf.summary.histogram('ReLU', act))
                     out = act
                 elif act_param.get('type') == 'leaky':
                     act = tf.nn.leaky_relu(out, act_param.get('param'), name='Leaky ReLU')
-                    tf.summary.histogram('Leaky_ReLU', act)
+                    self.summary_list.append(tf.summary.histogram('Leaky_ReLU', act))
                     out = act
                 elif act_param.get('type') == 'sigmoid':
                     act = tf.sigmoid(out, name='Sigmoid')
-                    tf.summary.histogram('Sigmoid', act)
+                    self.summary_list.append(tf.summary.histogram('Sigmoid', act))
                     out = act
             if dropout:
                 if dropout_param is not None:

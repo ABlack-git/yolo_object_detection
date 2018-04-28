@@ -1,10 +1,10 @@
 import tensorflow as tf
 import os
-from network.nn_template import NNTemplate
+from network.nn_template import ANN
 from tensorflow.examples.tutorials.mnist import input_data
 
 
-class MnistNN(NNTemplate):
+class MnistNN(ANN):
 
     def __init__(self, restore=False):
         #

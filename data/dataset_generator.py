@@ -38,7 +38,7 @@ class DatasetGenerator:
         return labels
 
     def reshuffle(self):
-        ziped = zip(self.data_imgs, self.data_labels)
+        ziped = list(zip(self.data_imgs, self.data_labels))
         random.shuffle(ziped)
         self.data_imgs, self.data_labels = zip(*ziped)
 

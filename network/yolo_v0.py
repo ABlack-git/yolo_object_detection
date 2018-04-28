@@ -22,7 +22,7 @@ class YoloV0(ANN):
         super(YoloV0, self).__init__()
         self.optimizer = None
         self.sess = None
-        self.saver = tf.train.Saver()
+        # self.saver = tf.train.Saver()
         # Model parameters
         if not params:
             params = {'coord_scale': 5, 'noobj_scale': 0.5,
@@ -119,7 +119,7 @@ class YoloV0(ANN):
             self.predictions = super().create_fc_layer(flatten, [in_dim, out_dim], 'FC_1', activation=True,
                                                        act_param={'type': 'sigmoid'})
 
-    def _optimizer(self, optimizer='Adam'):
+    def _optimizer(self, optimizer='Adam', param=None):
         if not self.optimizer:
             with tf.name_scope('Optimizer'):
                 if optimizer == 'Adam':
@@ -130,6 +130,8 @@ class YoloV0(ANN):
                     self.optimizer = tf.train.GradientDescentOptimizer(self.learning_rate)
                 elif optimizer == 'AdaGrad':
                     self.optimizer = tf.train.AdagradOptimizer(self.learning_rate)
+                elif optimizer == 'Nesterov':
+                    self.optimizer = tf.train.MomentumOptimizer(self.learning_rate, param, use_nesterov=True)
                 else:
                     tf.logging.warning('Not supported')
                 # add summaries of gradients
@@ -154,11 +156,41 @@ class YoloV0(ANN):
                 if i % 100 == 0:
                     s = self.sess.run(summary, feed_dict={self.x: imgs, self.y_true: labels})
                     summary_writer.add_summary(s, tf.train.global_step(self.sess, self.global_step))
+                    summary_writer.flush()
+                    loss, preds = self.sess.run([self.loss, self.predictions],
+                                                feed_dict={self.x: imgs, self.y_true: labels})
+                    b_preds = self.predictions_to_boxes(preds)
+                    b_true = self.predictions_to_boxes(labels)
+                    b_true = self.convert_coords(b_true)
+                    tmp = []
+                    for b_img in b_true:
+                        tmp.append(np.delete(b_img, np.where(b_img[:, 4] != 1.0), axis=0))
+                    b_true = tmp
+                    b_preds = self.nms(b_preds)
+                    stats = self.compute_stats(b_preds, b_true)
+                    tmp = np.sum(stats, axis=0)
+                    no_tp = tmp[0]
+                    avg_prec = tmp[1] / len(stats)
+                    avg_recall = tmp[2] / len(stats)
+                    avg_conf = tmp[3] / len(stats)
+                    avg_iou = tmp[4] / len(stats)
+                    self.log_scalar('t_avg_prec', avg_prec, summary_writer, 'Statistics')
+                    self.log_scalar('t_avg_recall', avg_recall, summary_writer, 'Statistics')
+                    self.log_scalar('t_avg_conf', avg_conf, summary_writer, 'Statistics')
+                    self.log_scalar('t_avg_iou', avg_iou, summary_writer, 'Statistics')
+                    print('Statistics on training set')
+                    print(
+                        'Step: %s, loss: %.4f, no_tp: %d, avg_precision: %.3f, avg_recall %.3f, avg_confidance: %.3f, '
+                        'avg_iou: %.3f'
+                        % (tf.train.global_step(self.sess, self.global_step), loss, no_tp, avg_prec, avg_recall,
+                           avg_conf,
+                           avg_iou))
+                if i % 200 == 0:
+                    # validate every 200 batches
+                    pass
+                self.sess.run([self.optimizer], feed_dict={self.x: imgs, self.y_true: labels})
 
-                _, loss = self.sess.run([self.optimizer, self.loss],
-                                        feed_dict={self.x: imgs, self.y_true: labels})
-
-                tf.logging.info('Loss at step %d is %f' % (tf.train.global_step(self.sess, self.global_step), loss))
+                # tf.logging.info('Loss at step %d is %f' % (tf.train.global_step(self.sess, self.global_step), loss))
 
     def tf_iou(self, y_true, y_pred):
         """
@@ -221,6 +253,11 @@ class YoloV0(ANN):
                 union = tf.subtract(tf.add(area_1, area_b), intersection, name='Union')
 
                 return tf.truediv(intersection, union, name='IoU')
+
+    def log_scalar(self, tag, value, summary_writer, name):
+        with tf.name_scope(name):
+            summary = tf.Summary(value=[tf.Summary.Value(tag=tag, simple_value=value)])
+        summary_writer.add_summary(summary, tf.train.global_step(self.sess, self.global_step))
 
     def get_predictions(self, x):
         if x is None:
@@ -390,4 +427,5 @@ class YoloV0(ANN):
             precision = no_tp / (no_tp + no_fp)
             recall = no_tp / (no_tp + no_fn)
             statistics.append([no_tp, precision, recall, avg_conf, avg_iou])
-        return statistics
+
+        return np.asarray(statistics)

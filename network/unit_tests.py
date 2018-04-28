@@ -194,8 +194,15 @@ def test_compute_stats():
     b_true = net.convert_coords(boxes_true, nump=False)
     b_pred = net.convert_coords(boxes_pred, nump=False)
     stats = net.compute_stats(b_pred, b_true)
+    tmp = np.sum(stats, axis=0)
+    no_tp = tmp[0]
+    avg_prec = tmp[1] / len(stats)
+    avg_recall = tmp[2] / len(stats)
+    avg_conf = tmp[3] / len(stats)
+    avg_iou = tmp[4] / len(stats)
     print('Third test results:')
     print(stats)
+    print([no_tp, avg_prec, avg_recall, avg_conf, avg_iou])
 
 
 def test_io():
@@ -206,19 +213,23 @@ def test_io():
                                '/Volumes/TRANSCEND/Data Sets/another_testset/tf_iou_test/labels',
                                img_size, grid_size, 1, False)
     net.open_sess()
-    batch = dataset.get_minibatch(2)
+    batch = dataset.get_minibatch(10)
     imgs, labels = next(batch)
     preds = net.get_predictions(imgs)
     preds = net.predictions_to_boxes(preds)
     preds = net.nms(preds)
-    # print(preds)
-    truth = net.predictions_to_boxes(labels)
 
+    print(preds)
+    truth = net.predictions_to_boxes(labels)
+    truth = net.convert_coords(truth)
+    print(truth)
     true_boxes = []
     for t_boxes in truth:
         true_boxes.append(np.delete(t_boxes, np.where(t_boxes[:, 4] != 1.0), axis=0))
+    print(true_boxes)
     stats = net.compute_stats(preds, true_boxes)
     print(stats)
+    print(np.shape(stats))
     net.close_sess()
 
 

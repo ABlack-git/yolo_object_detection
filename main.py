@@ -7,11 +7,11 @@ import numpy as np
 
 def first_run():
     params = {'coord_scale': 5,
-              'noobj_scale': 0.5,
+              'noobj_scale': 0.2,
               'training_set_imgs': "E:\Andrew\Dataset\Training set\Images",
               'training_set_labels': "E:\Andrew\Dataset\Training set\Annotations",
               'batch_size': 32,
-              'learning_rate': 0.01,
+              'learning_rate': 0.0001,
               'optimizer': 'Adam',
               'threshold': 0.5,
               'save_path': "E:\Andrew\Model_checkpoints"}
@@ -25,20 +25,20 @@ def first_run():
 
 def restore_and_run():
     params = {'coord_scale': 5,
-              'noobj_scale': 0.5,
-              'training_set_imgs': '/Volumes/TRANSCEND/Data Sets/another_testset/imgs',
-              'training_set_labels': '/Volumes/TRANSCEND/Data Sets/another_testset/labels',
-              'batch_size': 10,
-              'learning_rate': 0.01,
+              'noobj_scale': 0.2,
+              'training_set_imgs': "E:\Andrew\Dataset\Training set\Images",
+              'training_set_labels': "E:\Andrew\Dataset\Training set\Annotations",
+              'batch_size': 32,
+              'learning_rate': 0.0001,
               'optimizer': 'Adam',
-              'threshold': 0.5}
-    model_path = ''
-    meta_path = ''
+              'threshold': 0.25}
+    model_path = '"E:\Andrew\Model_checkpoints"'
+    meta_path = '"E:\Andrew\Model_checkpoints\model-140.meta"'
     img_size = (720, 480)
     grid_size = (36, 24)
     net = YoloV0(grid_size, img_size, params, restore=True)
     net.restore(model_path, meta_path)
-
+    net.optimize(5)
 
 if __name__ == '__main__':
-    first_run()
+    restore_and_run()

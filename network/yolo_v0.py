@@ -67,6 +67,7 @@ class YoloV0(ANN):
         self.inference(self.x)
         self.loss_func(self.predictions, self.y_true)
         self._optimizer(params.get('optimizer'))
+        self.sess.run(tf.global_variables_initializer)
         self.saver = tf.train.Saver(max_to_keep=10)
 
     def loss_func(self, y_pred, y_true):

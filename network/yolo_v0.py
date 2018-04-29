@@ -130,6 +130,7 @@ class YoloV0(ANN):
                 self.summary_list.append(tf.summary.scalar('Loss', self.loss))
                 self.summary_list.append(tf.summary.histogram('is_obj', is_obj))
                 self.summary_list.append(tf.summary.histogram('no_obj', no_obj))
+                self.summary_list.append(tf.summary.histogram('confidance', confidence))
 
     def inference(self, x):
         if not self.predictions:

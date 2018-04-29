@@ -123,13 +123,13 @@ class DatasetGenerator:
             counter += 1
 
             if len(self.data_labels) == counter:
-                print('No more items in data set')
+                # print('No more items in data set')
                 empty = True
 
             if counter % batch_size == 0:
                 batch_counter += 1
                 # print('Counter is %d' % counter)
-                print('Batch number %d has been loaded' % batch_counter)
+                # print('Batch number %d has been loaded' % batch_counter)
                 # yield images, labels
                 # yield np.array(images, dtype=np.int), np.array(labels, dtype=np.float32)
                 yield images, np.array(labels, dtype=np.float32)

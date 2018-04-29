@@ -4,6 +4,7 @@ import tensorflow as tf
 import os
 import datetime
 import numpy as np
+import time
 
 
 class YoloV0(ANN):
@@ -22,14 +23,21 @@ class YoloV0(ANN):
         super(YoloV0, self).__init__()
         self.optimizer = None
         self.sess = None
-        # self.saver = tf.train.Saver()
+        self.saver = None
         # Model parameters
         if not params:
-            params = {'coord_scale': 5, 'noobj_scale': 0.5,
+            params = {'coord_scale': 5,
+                      'noobj_scale': 0.5,
                       'training_set_imgs': '/Volumes/TRANSCEND/Data Sets/another_testset/imgs',
-                      'training_set_labels': '/Volumes/TRANSCEND/Data Sets/another_testset/labels', 'batch_size': 32,
-                      'learning_rate': 0.01, 'optimizer': 'SGD', 'threshold': 0.5}
-
+                      'training_set_labels': '/Volumes/TRANSCEND/Data Sets/another_testset/labels',
+                      'test_set_img': '',
+                      'test_set_labels': '',
+                      'batch_size': 1,
+                      'learning_rate': 0.01,
+                      'optimizer': 'SGD',
+                      'threshold': 0.5,
+                      'save_path': 'CheckPoints'}
+        self.restored = False
         self.no_boxes = 1
         self.grid_size = grid_size
         self.img_size = img_size
@@ -44,7 +52,9 @@ class YoloV0(ANN):
                                              self.img_size, grid_size, 1)
         self.valid_set = None
         self.test_set = None
+        self.save_path = params.get('save_path')
         # Model initialization
+        self.open_sess()
         if not restore:
             self.__create_network(params)
         else:
@@ -57,6 +67,7 @@ class YoloV0(ANN):
         self.inference(self.x)
         self.loss_func(self.predictions, self.y_true)
         self._optimizer(params.get('optimizer'))
+        self.saver = tf.train.Saver(max_to_keep=10)
 
     def loss_func(self, y_pred, y_true):
         if not self.loss:
@@ -97,46 +108,50 @@ class YoloV0(ANN):
         if not self.predictions:
             act_param = {'type': 'leaky', 'param': 0.1}
             conv1 = super().create_conv_layer(x, [3, 3, 3, 16], 'Conv_1', [1, 1, 1, 1], activation=True, pooling=True,
-                                              act_param=act_param)
+                                              act_param=act_param, weight_init='Xavier')
             conv2 = super().create_conv_layer(conv1, [3, 3, 16, 32], 'Conv_2', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param)
+                                              pooling=True, act_param=act_param, weight_init='Xavier')
             conv3 = super().create_conv_layer(conv2, [3, 3, 32, 64], 'Conv_3', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param)
+                                              pooling=True, act_param=act_param, weight_init='Xavier')
             conv4 = super().create_conv_layer(conv3, [3, 3, 64, 128], 'Conv_4', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param)
+                                              pooling=True, act_param=act_param, weight_init='Xavier')
             conv5 = super().create_conv_layer(conv4, [3, 3, 128, 256], 'Conv_5', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param)
+                                              pooling=True, act_param=act_param, weight_init='Xavier')
             conv6 = super().create_conv_layer(conv5, [3, 3, 256, 512], 'Conv_6', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param)
+                                              pooling=True, act_param=act_param, weight_init='Xavier')
             conv7 = super().create_conv_layer(conv6, [3, 3, 512, 1024], 'Conv_7', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param)
+                                              pooling=True, act_param=act_param, weight_init='Xavier')
             conv8 = super().create_conv_layer(conv7, [3, 3, 1024, 256], 'Conv_8', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param)
+                                              pooling=True, act_param=act_param, weight_init='Xavier')
             # 3x2 is size of a feature map in last conv layer
             flatten = tf.reshape(conv8, [-1, 3 * 2 * 256])
             out_dim = self.grid_size[0] * self.grid_size[1] * 5 * self.no_boxes
             in_dim = 3 * 2 * 256
             self.predictions = super().create_fc_layer(flatten, [in_dim, out_dim], 'FC_1', activation=True,
-                                                       act_param={'type': 'sigmoid'})
+                                                       act_param={'type': 'sigmoid'}, weight_init='Xavier')
 
     def _optimizer(self, optimizer='Adam', param=None):
         if not self.optimizer:
             with tf.name_scope('Optimizer'):
                 if optimizer == 'Adam':
                     self.optimizer = tf.train.AdamOptimizer(self.learning_rate)
-                    tf.logging.info('Using Adam')
+                    tf.logging.info('Using %s optimizer' % optimizer)
                 elif optimizer == 'SGD':
-                    tf.logging.info('Using SGD')
+                    tf.logging.info('Using %s optimizer' % optimizer)
                     self.optimizer = tf.train.GradientDescentOptimizer(self.learning_rate)
                 elif optimizer == 'AdaGrad':
+                    tf.logging.info('Using %s optimizer' % optimizer)
                     self.optimizer = tf.train.AdagradOptimizer(self.learning_rate)
                 elif optimizer == 'Nesterov':
+                    tf.logging.info('Using %s optimizer' % optimizer)
                     self.optimizer = tf.train.MomentumOptimizer(self.learning_rate, param, use_nesterov=True)
                 else:
-                    tf.logging.warning('Not supported')
+                    tf.logging.warning('Optimizer specified in input is not supported')
+                    tf.logging.info('Using Adam optimizer')
+                    self.optimizer = tf.train.AdamOptimizer(self.learning_rate)
                 # add summaries of gradients
                 grads = self.optimizer.compute_gradients(self.loss)
-                self.optimizer = self.optimizer.apply_gradients(grads, global_step=self.global_step)
+                self.optimizer = self.optimizer.apply_gradients(grads, global_step=self.global_step, name='optimizer')
                 for i, grad in enumerate(grads):
                     self.summary_list.append(
                         tf.summary.histogram("{}-grad".format(grads[i][1].name.replace(':0', '-0')), grads[i]))
@@ -145,15 +160,16 @@ class YoloV0(ANN):
         now = datetime.datetime.now()
         summary_folder = '%d_%d_%d__%d-%d' % (now.day, now.month, now.year, now.hour, now.minute)
         summary_writer = tf.summary.FileWriter(os.path.join('summaries', summary_folder))
-        summary = tf.summary.merge([self.summary_list])
+        summary = tf.summary.merge_all()
         tf.logging.info(
             'Starting to train model. Current global step is %s' % tf.train.global_step(self.sess, self.global_step))
         for _ in range(epochs):
             batch = self.training_set.get_minibatch(self.batch_size)
             no_batches = self.training_set.get_number_of_batches(self.batch_size)
             for i in range(no_batches):
+                t_0 = time.time()
                 imgs, labels = next(batch)
-                if i % 100 == 0:
+                if i % 50 == 0:
                     s = self.sess.run(summary, feed_dict={self.x: imgs, self.y_true: labels})
                     summary_writer.add_summary(s, tf.train.global_step(self.sess, self.global_step))
                     summary_writer.flush()
@@ -186,11 +202,15 @@ class YoloV0(ANN):
                            avg_conf,
                            avg_iou))
                 if i % 200 == 0:
-                    # validate every 200 batches
-                    pass
-                self.sess.run([self.optimizer], feed_dict={self.x: imgs, self.y_true: labels})
+                    self.test_model()
 
-                # tf.logging.info('Loss at step %d is %f' % (tf.train.global_step(self.sess, self.global_step), loss))
+                if i == int(self.training_set.get_number_of_batches(self.batch_size) / 2):
+                    self.save(self.save_path, 'model')
+
+                self.sess.run([self.optimizer], feed_dict={self.x: imgs, self.y_true: labels})
+                t_f = time.time() - t_0
+                tf.logging.info('Global step: %s, Batch processed: %d/%d, Time to process batch: %.2f' % (
+                    tf.train.global_step(self.sess, self.global_step), i, no_batches, t_f))
 
     def tf_iou(self, y_true, y_pred):
         """
@@ -362,7 +382,23 @@ class YoloV0(ANN):
                         global_step=tf.train.global_step(self.sess, self.global_step))
 
     def restore(self, path, meta):
-        pass
+        if not self.restored:
+            self.saver = tf.train.import_meta_graph(meta)
+            try:
+                self.saver.restore(self.sess, save_path=path)
+                graph = tf.get_default_graph()
+                self.x = graph.get_tensor_by_name('Input:0')
+                self.y_true = graph.get_tensor_by_name('GT_input:0')
+                self.predictions = graph.get_tensor_by_name('FC_1/output:0')
+                self.loss = graph.get_tensor_by_name('Loss_function/Loss:0')
+                self.optimizer = graph.get_operation_by_name('Optimizer/optimizer')
+                self.global_step = graph.get_tensor_by_name('global_step:0')
+                self.saver = tf.train.Saver(max_to_keep=10)
+                self.restored = True
+            except KeyError as e:
+                tf.logging.fatal("Restoring was not successful. KeyError exception was raised.")
+                tf.logging.fatal(e)
+                exit(1)
 
     def open_sess(self):
         if not self.sess:
@@ -429,3 +465,13 @@ class YoloV0(ANN):
             statistics.append([no_tp, precision, recall, avg_conf, avg_iou])
 
         return np.asarray(statistics)
+
+    def test_model(self):
+        pass
+
+
+if __name__ == '__main__':
+    img_size = (720, 480)
+    grid_size = (36, 24)
+    net = YoloV0(grid_size, img_size)
+    net.close_sess()

@@ -3,40 +3,8 @@ from network.yolo_v0 import YoloV0
 from data.dataset_generator import DatasetGenerator
 import tensorflow as tf
 import numpy as np
-
-
-def convert(labels, grid_size, img_size, o_img_size):
-    # print(labels[0, :, 0])
-    w_ratio = o_img_size[0] / img_size[0]
-    h_ratio = o_img_size[1] / img_size[1]
-    Gi = np.zeros([grid_size[0] * grid_size[1]])
-    Gj = np.zeros([grid_size[0] * grid_size[1]])
-    counter_i = 0
-    counter_j = 0
-    for i in range(grid_size[0] * grid_size[1]):
-        Gi[i] = counter_i
-        Gj[i] = counter_j
-        counter_i += 1
-        if (i + 1) % grid_size[0] == 0:
-            counter_i = 0
-            counter_j += 1
-    # print(Gi)
-    print(img_size[0] / grid_size[0])
-    labels[:, :, 0] = (labels[:, :, 0] + Gi) * img_size[0] / grid_size[0] * w_ratio
-    labels[:, :, 1] = (labels[:, :, 1] + Gj) * img_size[1] / grid_size[1] * h_ratio
-    labels[:, :, 2] = np.power(labels[:, :, 2] * img_size[0], 2) * w_ratio
-    labels[:, :, 3] = np.power(labels[:, :, 3] * img_size[1], 2) * h_ratio
-    for row in labels[0, :, :]:
-        print(row)
-
-
-def covert_to_centre(boxes):
-    boxes[:, 2] = boxes[:, 2] - boxes[:, 0]
-    boxes[:, 3] = boxes[:, 3] - boxes[:, 1]
-    boxes[:, 0] = boxes[:, 0] + np.round(np.divide(boxes[:, 2], 2))
-    boxes[:, 1] = boxes[:, 1] + np.round(np.divide(boxes[:, 3], 2))
-
-    return boxes
+import utils
+import cv2
 
 
 def test_tf_iou():
@@ -120,7 +88,7 @@ def test_nms():
     nms = net.nms(boxes_pred)
     print(nms)
     for batch_n in range(len(boxes_pred)):
-        nms[batch_n] = covert_to_centre(nms[batch_n])
+        nms[batch_n] = utils.covert_to_centre(nms[batch_n])
         print(nms[batch_n])
 
 
@@ -233,5 +201,35 @@ def test_io():
     net.close_sess()
 
 
+def test_dataset():
+    imgs_dir = '/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Images'
+    labels_dir = '/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Annotations'
+    img_size = (720, 480)
+    grid_size = (36, 24)
+    dataset = DatasetGenerator(imgs_dir, labels_dir, img_size, grid_size, 1)
+    batch = dataset.get_minibatch(10)
+    net = YoloV0(grid_size, img_size)
+
+    for i in range(dataset.get_number_of_batches(10)):
+        imgs, labels = next(batch)
+        print(np.shape(imgs))
+        boxes = net.predictions_to_boxes(labels)
+        boxes = net.convert_coords(boxes)
+        tmp = []
+        for b_true in boxes:
+            tmp.append(np.delete(b_true, np.where(b_true[:, 4] != 1.0), axis=0))
+        boxes = tmp
+        for ind, image in enumerate(imgs):
+            utils.draw_grid(image, grid_size)
+            utils.draw_bbox(boxes[ind], image)
+            cv2.imshow('image', image)
+            k = cv2.waitKey(25)
+            if k == ord(' '):
+                pass
+            elif k == 27:
+                cv2.destroyAllWindows()
+                exit(0)
+
+
 if __name__ == '__main__':
-    test_io()
+    test_dataset()

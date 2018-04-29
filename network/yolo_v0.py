@@ -87,9 +87,11 @@ class YoloV0(ANN):
 
                 # calculate confidance
                 iou = self.tf_iou(y_true, y_pred)
+                tf.stop_gradient(iou)
                 self.summary_list.append(tf.summary.histogram('IOU', iou))
                 with tf.name_scope('Confidence'):
                     confidence = tf.multiply(is_obj, iou, name='confidence')
+                    tf.stop_gradient(confidence)
                     no_obj = tf.to_float(tf.not_equal(is_obj, 1))
                     # add confidence where object is present
                     c_obj_loss = tf.reduce_sum(tf.multiply(is_obj, tf.pow(y_pred[:, :, 4] - confidence, 2)),
@@ -104,6 +106,7 @@ class YoloV0(ANN):
                 self.summary_list.append(tf.summary.scalar('c_obj_loss', c_obj_loss))
                 self.summary_list.append(tf.summary.scalar('c_noobj_loss', c_noobj_loss))
                 self.summary_list.append(tf.summary.scalar('Loss', self.loss))
+                self.summary_list.append(tf.summary.histogram('is_obj', is_obj))
 
     def inference(self, x):
         if not self.predictions:
@@ -170,7 +173,9 @@ class YoloV0(ANN):
             for i in range(no_batches):
                 t_0 = time.time()
                 imgs, labels = next(batch)
-                if i % 50 == 0:
+                g_step = tf.train.global_step(self.sess, self.global_step)
+                if g_step % 50 == 0:
+                    val_t0 = time.time()
                     s = self.sess.run(summary, feed_dict={self.x: imgs, self.y_true: labels})
                     summary_writer.add_summary(s, tf.train.global_step(self.sess, self.global_step))
                     summary_writer.flush()
@@ -195,13 +200,13 @@ class YoloV0(ANN):
                     self.log_scalar('t_avg_recall', avg_recall, summary_writer, 'Statistics')
                     self.log_scalar('t_avg_conf', avg_conf, summary_writer, 'Statistics')
                     self.log_scalar('t_avg_iou', avg_iou, summary_writer, 'Statistics')
+                    val_tf = time.time() - val_t0
                     print('Statistics on training set')
                     print(
                         'Step: %s, loss: %.4f, no_tp: %d, avg_precision: %.3f, avg_recall %.3f, avg_confidance: %.3f, '
-                        'avg_iou: %.3f'
+                        'avg_iou: %.3f, Valiadation time: %.2f'
                         % (tf.train.global_step(self.sess, self.global_step), loss, no_tp, avg_prec, avg_recall,
-                           avg_conf,
-                           avg_iou))
+                           avg_conf, avg_iou, val_tf))
                 if i % 200 == 0:
                     self.test_model()
 

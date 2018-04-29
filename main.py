@@ -1,9 +1,5 @@
 from network.yolo_v0 import YoloV0
-from data.dataset_generator import DatasetGenerator
-import numpy as np
 
-
-# loss_scale, training_set_imgs, training_set_labels, batch_size, learning_rate
 
 def first_run():
     params = {'coord_scale': 5,
@@ -13,7 +9,8 @@ def first_run():
               'batch_size': 10,
               'learning_rate': 0.01,
               'optimizer': 'Adam',
-              'threshold': 0.5}
+              'threshold': 0.5,
+              'save_path': ''}
     img_size = (720, 480)
     grid_size = (36, 24)
     net = YoloV0(grid_size, img_size, params)

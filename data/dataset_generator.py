@@ -97,7 +97,7 @@ class DatasetGenerator:
         return label
 
     def get_number_of_batches(self, batch_size):
-        return int(np.ceil(len(self.data_labels) / batch_size))
+        return int(np.floor(len(self.data_labels) / batch_size))
 
     def get_minibatch(self, batch_size):
         self.reshuffle()
@@ -126,7 +126,7 @@ class DatasetGenerator:
                 print('No more items in data set')
                 empty = True
 
-            if counter % batch_size == 0 or (empty and labels is not None):
+            if counter % batch_size == 0:
                 batch_counter += 1
                 # print('Counter is %d' % counter)
                 print('Batch number %d has been loaded' % batch_counter)

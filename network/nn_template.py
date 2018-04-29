@@ -54,19 +54,20 @@ class ANN:
 
         if pooling and pool_param is None:
             pool_param = {'type': 'max', 'kernel': [1, 2, 2, 1], 'strides': [1, 2, 2, 1], 'padding': 'SAME'}
-        if weight_init == 'Normal':
-            weights = tf.truncated_normal(w_shape, stddev=0.1)
-        elif weight_init == 'Xavier':
-            weights = tf.contrib.layers.xavier_initializer()
-            weights = weights(w_shape)
-            tf.logging.info('Using Xavier init for %s layer' % name)
-        else:
-            weights = tf.truncated_normal(w_shape, stddev=0.1)
+
         # if weight_init != 'Normal':
         #     tf.logging.warning('Currently weight initialization is supported with normal distribution. '
         #                        'Continue with Normal distribution')
 
         with tf.name_scope(name):
+            if weight_init == 'Normal':
+                weights = tf.truncated_normal(w_shape, stddev=0.1)
+            elif weight_init == 'Xavier':
+                weights = tf.contrib.layers.xavier_initializer()
+                weights = weights(w_shape)
+                tf.logging.info('Using Xavier init for %s layer' % name)
+            else:
+                weights = tf.truncated_normal(w_shape, stddev=0.1)
             w = tf.Variable(weights, name='weights')
             b = tf.Variable(tf.constant(0.1, shape=[w_shape[3]]), name='biases')
             conv = tf.nn.conv2d(x, w, strides=strides, padding='SAME')
@@ -106,19 +107,20 @@ class ANN:
         """
         if activation and act_param is None:
             act_param = {'type': 'ReLU', 'param': -1}
-        if weight_init == 'Normal':
-            weights = tf.truncated_normal(shape, stddev=0.1)
-        elif weight_init == 'Xavier':
-            weights = tf.contrib.layers.xavier_initializer()
-            weights = weights(shape)
-            tf.logging.info('Using Xavier init for %s layer' % name)
-        else:
-            weights = tf.truncated_normal(shape, stddev=0.1)
+
             # if weight_init != 'Normal':
             #     tf.logging.warning('Currently weight initialization is supported with normal distribution. '
             #                        'Continue with Normal distribution')
             # weight_init = 'Normal'
         with tf.name_scope(name):
+            if weight_init == 'Normal':
+                weights = tf.truncated_normal(shape, stddev=0.1)
+            elif weight_init == 'Xavier':
+                weights = tf.contrib.layers.xavier_initializer()
+                weights = weights(shape)
+                tf.logging.info('Using Xavier init for %s layer' % name)
+            else:
+                weights = tf.truncated_normal(shape, stddev=0.1)
             w = tf.Variable(weights, name="weights")
             b = tf.Variable(tf.constant(0.1, shape=[shape[1]]), name="biases")
             self.summary_list.append(tf.summary.histogram("weights", w))

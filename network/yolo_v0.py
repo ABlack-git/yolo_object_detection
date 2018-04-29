@@ -160,7 +160,7 @@ class YoloV0(ANN):
     def optimize(self, epochs):
         now = datetime.datetime.now()
         summary_folder = '%d_%d_%d__%d-%d' % (now.day, now.month, now.year, now.hour, now.minute)
-        summary_writer = tf.summary.FileWriter(os.path.join('summaries', summary_folder))
+        summary_writer = tf.summary.FileWriter(os.path.join('summaries', summary_folder), graph=tf.get_default_graph())
         summary = tf.summary.merge_all()
         tf.logging.info(
             'Starting to train model. Current global step is %s' % tf.train.global_step(self.sess, self.global_step))
@@ -406,9 +406,9 @@ class YoloV0(ANN):
             self.sess = tf.Session()
             self.sess.run(tf.global_variables_initializer())
 
-            writer = tf.summary.FileWriter(os.path.join('summaries', 'graph'), graph=tf.get_default_graph(),
-                                           filename_suffix='graph_')
-            writer.flush()
+            # writer = tf.summary.FileWriter(os.path.join('summaries', 'graph'), graph=tf.get_default_graph(),
+            #                                filename_suffix='graph_')
+            # writer.flush()
 
     def close_sess(self):
         self.sess.close()

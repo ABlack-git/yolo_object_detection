@@ -75,19 +75,25 @@ class DatasetGenerator:
 
         for ind, box in enumerate(boxes):
             # calculate coordinates of cell
+            if box[0] >= self.image_w:
+                box[0] = self.image_w - 1
+            if box[1] >= self.image_h:
+                box[1] = self.image_h - 1
             i = np.floor(box[0] / self.grid_w)
             j = np.floor(box[1] / self.grid_h)
             # calculate index of cell in label vector
             k = int(5 * self.no_boxes * ((j + 1) * self.grid_n - (self.grid_n - i)))
             for box_n in range(self.no_boxes):
-                label[k + 5 * box_n] = box[0] / self.grid_w - i
-                label[k + 1 + 5 * box_n] = box[1] / self.grid_h - j
-                label[k + 2 + 5 * box_n] = np.sqrt(box[2]) / self.image_w
-                label[k + 3 + 5 * box_n] = np.sqrt(box[3]) / self.image_h
-                # if label[k + 4] != 0:
-                # # print('Cell %d is already taken' % k)
-                # pass
-                label[k + 4 + 5 * box_n] = 1
+                try:
+                    label[k + 5 * box_n] = box[0] / self.grid_w - i
+                    label[k + 1 + 5 * box_n] = box[1] / self.grid_h - j
+                    label[k + 2 + 5 * box_n] = np.sqrt(box[2]) / self.image_w
+                    label[k + 3 + 5 * box_n] = np.sqrt(box[3]) / self.image_h
+                    label[k + 4 + 5 * box_n] = 1
+                except IndexError:
+                    print('k: %d, i: %.1f, j: %.1f, box_w: %f, box_h: %f, labels_size %s' % (
+                        k, i, j, box[0], box[1], str(np.shape(label))))
+                    raise IndexError
         return label
 
     def get_number_of_batches(self, batch_size):
@@ -108,7 +114,10 @@ class DatasetGenerator:
             # resize img
             img = self.resize_img(img)
             # resize and adujst labels
-            boxes = self.resize_and_adjust_labels((height, width), boxes)
+            try:
+                boxes = self.resize_and_adjust_labels((height, width), boxes)
+            except IndexError:
+                print('In %s' % (self.data_imgs[counter]))
             images.append(img)
             labels.append(boxes)
             counter += 1
@@ -121,7 +130,9 @@ class DatasetGenerator:
                 batch_counter += 1
                 # print('Counter is %d' % counter)
                 print('Batch number %d has been loaded' % batch_counter)
-                yield np.array(images, dtype=np.float32), np.array(labels, dtype=np.float32)
+                # yield images, labels
+                # yield np.array(images, dtype=np.int), np.array(labels, dtype=np.float32)
+                yield images, np.array(labels, dtype=np.float32)
                 del images
                 del labels
                 images = []

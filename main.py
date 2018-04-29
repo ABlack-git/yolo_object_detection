@@ -28,7 +28,7 @@ def restore_and_run():
               'noobj_scale': 0.5,
               'training_set_imgs': '/Volumes/TRANSCEND/Data Sets/another_testset/imgs',
               'training_set_labels': '/Volumes/TRANSCEND/Data Sets/another_testset/labels',
-              'batch_size': 10,
+              'batch_size': 32,
               'learning_rate': 0.01,
               'optimizer': 'Adam',
               'threshold': 0.5}

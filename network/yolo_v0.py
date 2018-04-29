@@ -461,8 +461,8 @@ class YoloV0(ANN):
 
             avg_iou = avg_iou / no_tp if no_tp > 0 else 0.0
             avg_conf = avg_conf / no_tp if no_tp > 0 else 0.0
-            precision = no_tp / (no_tp + no_fp)
-            recall = no_tp / (no_tp + no_fn)
+            precision = no_tp / (no_tp + no_fp) if (no_tp + no_fp) > 0 else 0.0
+            recall = no_tp / (no_tp + no_fn) if (no_tp + no_fn) > 0 else 0.0
             statistics.append([no_tp, precision, recall, avg_conf, avg_iou])
 
         return np.asarray(statistics)

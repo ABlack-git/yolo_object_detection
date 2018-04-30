@@ -9,6 +9,7 @@ class ANN:
         self.global_step = None
         self.x = None
         self.y_true = None
+        self.train = None
 
     def inference(self, x):
         raise NotImplementedError
@@ -26,7 +27,7 @@ class ANN:
         raise NotImplementedError
 
     def create_conv_layer(self, x, w_shape, name, strides=None, activation=True, pooling=True, act_param=None,
-                          pool_param=None, weight_init='Normal'
+                          pool_param=None, weight_init='Normal', batch_norm=True
                           ):
 
         """
@@ -74,6 +75,8 @@ class ANN:
             self.summary_list.append(tf.summary.histogram('weights', w))
             self.summary_list.append(tf.summary.histogram('biases', b))
             out = tf.add(conv, b, name='output')
+            if batch_norm:
+                out = tf.layers.batch_normalization(out, training=self.train, name='batch_norm_layer')
             if activation:
                 if act_param.get('type') == 'ReLU':
                     act = tf.nn.relu(out, name='ReLu')
@@ -91,7 +94,7 @@ class ANN:
         return out
 
     def create_fc_layer(self, x, shape, name, activation=True, dropout=False, act_param=None, dropout_param=None,
-                        weight_init='Normal'):
+                        weight_init='Normal', batch_norm=True):
         """
          This function will create fully connected layer with activation function and dropout under same
          tensorflow name scope.
@@ -126,6 +129,8 @@ class ANN:
             self.summary_list.append(tf.summary.histogram("weights", w))
             self.summary_list.append(tf.summary.histogram("biases", b))
             out = tf.add(tf.matmul(x, w), b, name='output')
+            if batch_norm:
+                out = tf.layers.batch_normalization(out, training=self.train, name='Batch_norm_layer')
             if activation:
                 if act_param.get('type') == 'ReLU':
                     act = tf.nn.relu(out, name='ReLU')

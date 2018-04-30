@@ -65,6 +65,9 @@ class YoloV0(ANN):
         self.global_step = tf.Variable(0, name="global_step", trainable=False)
         self.x = tf.placeholder(tf.float32, [None, self.img_size[1], self.img_size[0], 3], name='Input')
         self.y_true = tf.placeholder(tf.float32, [None, self.grid_size[0] * self.grid_size[1] * 5], name='GT_input')
+        self.ph_learning_rate = tf.placeholder(tf.float32, shape=(), name='learning_rate')
+        self.ph_coord_scale = tf.placeholder(tf.float32, shape=(), name='coord_scale')
+        self.ph_noobj_scale = tf.placeholder(tf.float32, shape=(), name='noobj_scale')
         self.inference(self.x)
         self.loss_func(self.predictions, self.y_true)
         self._optimizer(params.get('optimizer'), params.get('opt_param'))
@@ -99,10 +102,10 @@ class YoloV0(ANN):
                     p_c = y_pred[:, :, 4]
 
                 with tf.name_scope('XY_LOSS'):
-                    xy_loss = self.coord_scale * tf.reduce_sum(
+                    xy_loss = self.ph_coord_scale * tf.reduce_sum(
                         tf.multiply(is_obj, tf.pow(p_x - t_x, 2) + tf.pow(p_y - t_y, 2)), name='xy_loss')
                 with tf.name_scope('WH_LOSS'):
-                    wh_loss = self.coord_scale * tf.reduce_sum(
+                    wh_loss = self.ph_coord_scale * tf.reduce_sum(
                         tf.multiply(is_obj, tf.pow(p_w - t_w, 2) + tf.pow(p_h - t_h, 2)), name='wh_loss')
 
                 # calculate confidance
@@ -119,8 +122,8 @@ class YoloV0(ANN):
                         c_obj_loss = tf.reduce_sum(tf.multiply(is_obj, tf.pow(p_c - confidence, 2)), name='c_obj_loss')
                     # add confidence where object is not present
                     with tf.variable_scope('noobj_loss'):
-                        c_noobj_loss = self.noobj_scale * tf.reduce_sum(tf.multiply(no_obj, tf.pow(p_c - 0, 2)),
-                                                                        name='c_noobj_loss')
+                        c_noobj_loss = self.ph_noobj_scale * tf.reduce_sum(tf.multiply(no_obj, tf.pow(p_c - 0, 2)),
+                                                                           name='c_noobj_loss')
                 with tf.variable_scope('Loss'):
                     self.loss = tf.add(xy_loss + wh_loss, c_obj_loss + c_noobj_loss, name='loss')
 
@@ -163,21 +166,20 @@ class YoloV0(ANN):
         if not self.optimizer:
             with tf.name_scope('Optimizer'):
                 if optimizer == 'Adam':
-                    self.optimizer = tf.train.AdamOptimizer(self.learning_rate)
+                    self.optimizer = tf.train.AdamOptimizer(self.ph_learning_rate)
                     tf.logging.info('Using %s optimizer' % optimizer)
                 elif optimizer == 'SGD':
                     tf.logging.info('Using %s optimizer' % optimizer)
-                    self.optimizer = tf.train.GradientDescentOptimizer(self.learning_rate)
+                    self.optimizer = tf.train.GradientDescentOptimizer(self.ph_learning_rate)
                 elif optimizer == 'AdaGrad':
                     tf.logging.info('Using %s optimizer' % optimizer)
-                    self.optimizer = tf.train.AdagradOptimizer(self.learning_rate)
+                    self.optimizer = tf.train.AdagradOptimizer(self.ph_learning_rate)
                 elif optimizer == 'Nesterov':
                     tf.logging.info('Using %s optimizer' % optimizer)
-                    self.optimizer = tf.train.MomentumOptimizer(self.learning_rate, param, use_nesterov=True)
+                    self.optimizer = tf.train.MomentumOptimizer(self.ph_learning_rate, param, use_nesterov=True)
                 else:
-                    tf.logging.warning('Optimizer specified in input is not supported')
-                    tf.logging.info('Using Adam optimizer')
-                    self.optimizer = tf.train.AdamOptimizer(self.learning_rate)
+                    tf.logging.warning('Optimizer specified in input is not supported. Exiting.')
+                    exit(1)
                 # add summaries of gradients
                 grads = self.optimizer.compute_gradients(self.loss)
                 self.optimizer = self.optimizer.apply_gradients(grads, global_step=self.global_step, name='optimizer')
@@ -201,11 +203,17 @@ class YoloV0(ANN):
                 g_step = tf.train.global_step(self.sess, self.global_step)
                 if g_step % 50 == 0:
                     val_t0 = time.time()
-                    s = self.sess.run(summary, feed_dict={self.x: imgs, self.y_true: labels})
+                    s = self.sess.run(summary, feed_dict={self.x: imgs, self.y_true: labels,
+                                                          self.ph_learning_rate: self.learning_rate,
+                                                          self.ph_coord_scale: self.coord_scale,
+                                                          self.ph_noobj_scale: self.noobj_scale})
                     summary_writer.add_summary(s, tf.train.global_step(self.sess, self.global_step))
                     summary_writer.flush()
                     loss, preds = self.sess.run([self.loss, self.predictions],
-                                                feed_dict={self.x: imgs, self.y_true: labels})
+                                                feed_dict={self.x: imgs, self.y_true: labels,
+                                                           self.ph_learning_rate: self.learning_rate,
+                                                           self.ph_coord_scale: self.coord_scale,
+                                                           self.ph_noobj_scale: self.noobj_scale})
                     print(np.asarray(preds, np.float32))
                     b_preds = self.predictions_to_boxes(preds)
                     b_true = self.predictions_to_boxes(labels)
@@ -239,7 +247,10 @@ class YoloV0(ANN):
                 if i == int(self.training_set.get_number_of_batches(self.batch_size) / 2):
                     self.save(self.save_path, 'model')
 
-                self.sess.run([self.optimizer], feed_dict={self.x: imgs, self.y_true: labels})
+                self.sess.run([self.optimizer],
+                              feed_dict={self.x: imgs, self.y_true: labels, self.ph_learning_rate: self.learning_rate,
+                                         self.ph_coord_scale: self.coord_scale,
+                                         self.ph_noobj_scale: self.noobj_scale})
                 t_f = time.time() - t_0
                 tf.logging.info('Global step: %s, Batch processed: %d/%d, Time to process batch: %.2f' % (
                     tf.train.global_step(self.sess, self.global_step), i, no_batches, t_f))

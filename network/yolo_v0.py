@@ -206,6 +206,7 @@ class YoloV0(ANN):
                     summary_writer.flush()
                     loss, preds = self.sess.run([self.loss, self.predictions],
                                                 feed_dict={self.x: imgs, self.y_true: labels})
+                    print(np.asarray(preds, np.float32))
                     b_preds = self.predictions_to_boxes(preds)
                     b_true = self.predictions_to_boxes(labels)
                     b_true = self.convert_coords(b_true)
@@ -415,7 +416,7 @@ class YoloV0(ANN):
     def restore(self, path, meta):
         if not self.restored:
             self.saver = tf.train.import_meta_graph(meta)
-            #self.saver = tf.train.Saver(max_to_keep=10)
+            # self.saver = tf.train.Saver(max_to_keep=10)
             try:
                 self.saver.restore(self.sess, save_path=path)
                 graph = tf.get_default_graph()

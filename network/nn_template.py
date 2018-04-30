@@ -9,7 +9,8 @@ class ANN:
         self.global_step = None
         self.x = None
         self.y_true = None
-        self.train = None
+        self.ph_train = None
+        self.train = True
 
     def inference(self, x):
         raise NotImplementedError
@@ -76,7 +77,7 @@ class ANN:
             self.summary_list.append(tf.summary.histogram('biases', b))
             out = tf.add(conv, b, name='output')
             if batch_norm:
-                out = tf.layers.batch_normalization(out, training=self.train, name='batch_norm_layer')
+                out = tf.layers.batch_normalization(out, training=self.ph_train, name='batch_norm_layer')
             if activation:
                 if act_param.get('type') == 'ReLU':
                     act = tf.nn.relu(out, name='ReLu')
@@ -130,7 +131,7 @@ class ANN:
             self.summary_list.append(tf.summary.histogram("biases", b))
             out = tf.add(tf.matmul(x, w), b, name='output')
             if batch_norm:
-                out = tf.layers.batch_normalization(out, training=self.train, name='Batch_norm_layer')
+                out = tf.layers.batch_normalization(out, training=self.ph_train, name='Batch_norm_layer')
             if activation:
                 if act_param.get('type') == 'ReLU':
                     act = tf.nn.relu(out, name='ReLU')

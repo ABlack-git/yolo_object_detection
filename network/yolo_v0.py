@@ -37,14 +37,15 @@ class YoloV0(ANN):
                       'optimizer': 'SGD',
                       'opt_para': None,
                       'threshold': 0.5,
-                      'save_path': 'CheckPoints'}
+                      'save_path': 'CheckPoints',
+                      'training': True}
         self.restored = False
         self.no_boxes = 1
         self.grid_size = grid_size
         self.img_size = img_size
         self.coord_scale = params.get('coord_scale')
         self.noobj_scale = params.get('noobj_scale')
-
+        self.train = params.get('training')
         self.batch_size = params.get('batch_size')
         self.learning_rate = params.get('learning_rate')
         self.nms_threshold = params.get('threshold')
@@ -56,6 +57,7 @@ class YoloV0(ANN):
         self.save_path = params.get('save_path')
         # Model initialization
         self.open_sess()
+
         if not restore:
             self.__create_network(params)
         else:
@@ -68,6 +70,7 @@ class YoloV0(ANN):
         self.ph_learning_rate = tf.placeholder(tf.float32, shape=(), name='learning_rate')
         self.ph_coord_scale = tf.placeholder(tf.float32, shape=(), name='coord_scale')
         self.ph_noobj_scale = tf.placeholder(tf.float32, shape=(), name='noobj_scale')
+        self.ph_train = tf.placeholder(tf.bool, shape=(), name='training')
         self.inference(self.x)
         self.loss_func(self.predictions, self.y_true)
         self._optimizer(params.get('optimizer'), params.get('opt_param'))
@@ -206,14 +209,16 @@ class YoloV0(ANN):
                     s = self.sess.run(summary, feed_dict={self.x: imgs, self.y_true: labels,
                                                           self.ph_learning_rate: self.learning_rate,
                                                           self.ph_coord_scale: self.coord_scale,
-                                                          self.ph_noobj_scale: self.noobj_scale})
+                                                          self.ph_noobj_scale: self.noobj_scale,
+                                                          self.ph_train: self.train})
                     summary_writer.add_summary(s, tf.train.global_step(self.sess, self.global_step))
                     summary_writer.flush()
                     loss, preds = self.sess.run([self.loss, self.predictions],
                                                 feed_dict={self.x: imgs, self.y_true: labels,
                                                            self.ph_learning_rate: self.learning_rate,
                                                            self.ph_coord_scale: self.coord_scale,
-                                                           self.ph_noobj_scale: self.noobj_scale})
+                                                           self.ph_noobj_scale: self.noobj_scale,
+                                                           self.ph_train: self.train})
                     print(np.asarray(preds, np.float32))
                     b_preds = self.predictions_to_boxes(preds)
                     b_true = self.predictions_to_boxes(labels)
@@ -250,7 +255,7 @@ class YoloV0(ANN):
                 self.sess.run([self.optimizer],
                               feed_dict={self.x: imgs, self.y_true: labels, self.ph_learning_rate: self.learning_rate,
                                          self.ph_coord_scale: self.coord_scale,
-                                         self.ph_noobj_scale: self.noobj_scale})
+                                         self.ph_noobj_scale: self.noobj_scale, self.ph_train: self.train})
                 t_f = time.time() - t_0
                 tf.logging.info('Global step: %s, Batch processed: %d/%d, Time to process batch: %.2f' % (
                     tf.train.global_step(self.sess, self.global_step), i, no_batches, t_f))
@@ -325,7 +330,7 @@ class YoloV0(ANN):
     def get_predictions(self, x):
         if x is None:
             raise TypeError
-        return self.sess.run(self.predictions, feed_dict={self.x: x})
+        return self.sess.run(self.predictions, feed_dict={self.x: x, self.ph_train: self.train})
 
     def predictions_to_boxes(self, preds):
         """

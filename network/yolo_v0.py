@@ -24,6 +24,10 @@ class YoloV0(ANN):
         self.optimizer = None
         self.sess = None
         self.saver = None
+        self.ph_learning_rate = None
+        self.ph_train = None
+        self.ph_coord_scale = None
+        self.ph_noobj_scale = None
         # Model parameters
         if not params:
             params = {'coord_scale': 5,
@@ -452,6 +456,10 @@ class YoloV0(ANN):
                 self.loss = graph.get_tensor_by_name('Loss_function/Loss/loss:0')
                 self.optimizer = graph.get_operation_by_name('Optimizer/optimizer')
                 self.global_step = graph.get_tensor_by_name('global_step:0')
+                self.ph_train = graph.get_tensor_by_name('training:0')
+                self.ph_learning_rate = graph.get_tensor_by_name('learning_rate:0')
+                self.ph_noobj_scale = graph.get_tensor_by_name('noobj_scle:0')
+                self.ph_coord_scale = graph.get_tensor_by_name('coord_scale:0')
                 # self.saver = tf.train.Saver(max_to_keep=10)
                 self.restored = True
             except KeyError as e:

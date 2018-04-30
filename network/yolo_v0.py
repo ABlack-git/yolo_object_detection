@@ -413,18 +413,18 @@ class YoloV0(ANN):
 
     def restore(self, path, meta):
         if not self.restored:
-            # self.saver = tf.train.import_meta_graph(meta)
-            self.saver = tf.train.Saver(max_to_keep=10)
+            self.saver = tf.train.import_meta_graph(meta)
+            #self.saver = tf.train.Saver(max_to_keep=10)
             try:
                 self.saver.restore(self.sess, save_path=path)
                 graph = tf.get_default_graph()
                 self.x = graph.get_tensor_by_name('Input:0')
                 self.y_true = graph.get_tensor_by_name('GT_input:0')
                 self.predictions = graph.get_tensor_by_name('FC_1/output:0')
-                self.loss = graph.get_tensor_by_name('Loss_function/Loss:0')
+                self.loss = graph.get_tensor_by_name('Loss_function/Loss/loss:0')
                 self.optimizer = graph.get_operation_by_name('Optimizer/optimizer')
                 self.global_step = graph.get_tensor_by_name('global_step:0')
-
+                self.saver = tf.train.Saver(max_to_keep=10)
                 self.restored = True
             except KeyError as e:
                 tf.logging.fatal("Restoring was not successful. KeyError exception was raised.")

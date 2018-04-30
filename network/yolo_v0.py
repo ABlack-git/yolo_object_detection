@@ -35,6 +35,7 @@ class YoloV0(ANN):
                       'batch_size': 1,
                       'learning_rate': 0.01,
                       'optimizer': 'SGD',
+                      'opt_para': None,
                       'threshold': 0.5,
                       'save_path': 'CheckPoints'}
         self.restored = False
@@ -66,7 +67,7 @@ class YoloV0(ANN):
         self.y_true = tf.placeholder(tf.float32, [None, self.grid_size[0] * self.grid_size[1] * 5], name='GT_input')
         self.inference(self.x)
         self.loss_func(self.predictions, self.y_true)
-        self._optimizer(params.get('optimizer'))
+        self._optimizer(params.get('optimizer'), params.get('opt_param'))
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver(max_to_keep=10)
 

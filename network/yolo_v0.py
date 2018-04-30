@@ -156,7 +156,7 @@ class YoloV0(ANN):
             flatten = tf.reshape(conv8, [-1, 3 * 2 * 256])
             out_dim = self.grid_size[0] * self.grid_size[1] * 5 * self.no_boxes
             in_dim = 3 * 2 * 256
-            self.predictions = super().create_fc_layer(flatten, [in_dim, out_dim], 'FC_1', activation=True,
+            self.predictions = super().create_fc_layer(flatten, [in_dim, out_dim], 'FC_1', activation=False,
                                                        act_param={'type': 'sigmoid'}, weight_init='Xavier')
 
     def _optimizer(self, optimizer='Adam', param=None):

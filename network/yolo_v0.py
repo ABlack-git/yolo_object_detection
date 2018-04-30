@@ -184,7 +184,9 @@ class YoloV0(ANN):
                     tf.logging.warning('Optimizer specified in input is not supported. Exiting.')
                     exit(1)
                 # add summaries of gradients
-                grads = self.optimizer.compute_gradients(self.loss)
+                update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+                with tf.control_dependencies(update_ops):
+                    grads = self.optimizer.compute_gradients(self.loss)
                 self.optimizer = self.optimizer.apply_gradients(grads, global_step=self.global_step, name='optimizer')
                 for i, grad in enumerate(grads):
                     self.summary_list.append(

@@ -146,25 +146,25 @@ class YoloV0(ANN):
                                               act_param=act_param, weight_init='Xavier', batch_norm=False)
 
             conv2 = super().create_conv_layer(conv1, [3, 3, 16, 32], 'Conv_2', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier')
+                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=False)
 
             conv3 = super().create_conv_layer(conv2, [3, 3, 32, 64], 'Conv_3', [1, 1, 1, 1], activation=True,
                                               pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=False)
 
             conv4 = super().create_conv_layer(conv3, [3, 3, 64, 128], 'Conv_4', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier')
+                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=False)
 
             conv5 = super().create_conv_layer(conv4, [3, 3, 128, 256], 'Conv_5', [1, 1, 1, 1], activation=True,
                                               pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=False)
 
             conv6 = super().create_conv_layer(conv5, [3, 3, 256, 512], 'Conv_6', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier')
+                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=False)
 
             conv7 = super().create_conv_layer(conv6, [3, 3, 512, 1024], 'Conv_7', [1, 1, 1, 1], activation=True,
                                               pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=False)
 
             conv8 = super().create_conv_layer(conv7, [3, 3, 1024, 256], 'Conv_8', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier')
+                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=False)
             # 3x2 is size of a feature map in last conv layer
             flatten = tf.reshape(conv8, [-1, 3 * 2 * 256])
             out_dim = self.grid_size[0] * self.grid_size[1] * 5 * self.no_boxes

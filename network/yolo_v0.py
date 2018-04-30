@@ -70,7 +70,7 @@ class YoloV0(ANN):
         self.ph_learning_rate = tf.placeholder(tf.float32, shape=(), name='learning_rate')
         self.ph_coord_scale = tf.placeholder(tf.float32, shape=(), name='coord_scale')
         self.ph_noobj_scale = tf.placeholder(tf.float32, shape=(), name='noobj_scale')
-        self.ph_train = tf.placeholder(tf.bool, shape=(), name='training')
+        self.ph_train = tf.placeholder(tf.bool, name='training')
         self.inference(self.x)
         self.loss_func(self.predictions, self.y_true)
         self._optimizer(params.get('optimizer'), params.get('opt_param'))
@@ -442,7 +442,7 @@ class YoloV0(ANN):
                 self.loss = graph.get_tensor_by_name('Loss_function/Loss/loss:0')
                 self.optimizer = graph.get_operation_by_name('Optimizer/optimizer')
                 self.global_step = graph.get_tensor_by_name('global_step:0')
-                self.saver = tf.train.Saver(max_to_keep=10)
+                # self.saver = tf.train.Saver(max_to_keep=10)
                 self.restored = True
             except KeyError as e:
                 tf.logging.fatal("Restoring was not successful. KeyError exception was raised.")

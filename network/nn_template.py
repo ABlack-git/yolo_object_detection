@@ -61,7 +61,7 @@ class ANN:
         #     tf.logging.warning('Currently weight initialization is supported with normal distribution. '
         #                        'Continue with Normal distribution')
 
-        with tf.name_scope(name):
+        with tf.variable_scope(name):
             if weight_init == 'Normal':
                 weights = tf.truncated_normal(w_shape, stddev=0.1)
             elif weight_init == 'Xavier':
@@ -116,7 +116,7 @@ class ANN:
             #     tf.logging.warning('Currently weight initialization is supported with normal distribution. '
             #                        'Continue with Normal distribution')
             # weight_init = 'Normal'
-        with tf.name_scope(name):
+        with tf.variable_scope(name):
             if weight_init == 'Normal':
                 weights = tf.truncated_normal(shape, stddev=0.1)
             elif weight_init == 'Xavier':

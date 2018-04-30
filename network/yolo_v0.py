@@ -143,19 +143,26 @@ class YoloV0(ANN):
         if not self.predictions:
             act_param = {'type': 'leaky', 'param': 0.1}
             conv1 = super().create_conv_layer(x, [3, 3, 3, 16], 'Conv_1', [1, 1, 1, 1], activation=True, pooling=True,
-                                              act_param=act_param, weight_init='Xavier')
+                                              act_param=act_param, weight_init='Xavier', batch_norm=False)
+
             conv2 = super().create_conv_layer(conv1, [3, 3, 16, 32], 'Conv_2', [1, 1, 1, 1], activation=True,
                                               pooling=True, act_param=act_param, weight_init='Xavier')
+
             conv3 = super().create_conv_layer(conv2, [3, 3, 32, 64], 'Conv_3', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier')
+                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=False)
+
             conv4 = super().create_conv_layer(conv3, [3, 3, 64, 128], 'Conv_4', [1, 1, 1, 1], activation=True,
                                               pooling=True, act_param=act_param, weight_init='Xavier')
+
             conv5 = super().create_conv_layer(conv4, [3, 3, 128, 256], 'Conv_5', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier')
+                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=False)
+
             conv6 = super().create_conv_layer(conv5, [3, 3, 256, 512], 'Conv_6', [1, 1, 1, 1], activation=True,
                                               pooling=True, act_param=act_param, weight_init='Xavier')
+
             conv7 = super().create_conv_layer(conv6, [3, 3, 512, 1024], 'Conv_7', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier')
+                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=False)
+
             conv8 = super().create_conv_layer(conv7, [3, 3, 1024, 256], 'Conv_8', [1, 1, 1, 1], activation=True,
                                               pooling=True, act_param=act_param, weight_init='Xavier')
             # 3x2 is size of a feature map in last conv layer
@@ -163,7 +170,8 @@ class YoloV0(ANN):
             out_dim = self.grid_size[0] * self.grid_size[1] * 5 * self.no_boxes
             in_dim = 3 * 2 * 256
             self.predictions = super().create_fc_layer(flatten, [in_dim, out_dim], 'FC_1', activation=False,
-                                                       act_param={'type': 'sigmoid'}, weight_init='Xavier')
+                                                       act_param={'type': 'sigmoid'}, weight_init='Xavier',
+                                                       batch_norm=False)
 
     def _optimizer(self, optimizer='Adam', param=None):
         if not self.optimizer:

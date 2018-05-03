@@ -77,6 +77,7 @@ class YoloV0(ANN):
         self.ph_learning_rate = tf.placeholder(tf.float32, shape=(), name='learning_rate')
         self.ph_coord_scale = tf.placeholder(tf.float32, shape=(), name='coord_scale')
         self.ph_noobj_scale = tf.placeholder(tf.float32, shape=(), name='noobj_scale')
+        self.ph_isobj_scale = tf.placeholder(tf.float32, shape=(), name='isobj_scale')
         self.ph_train = tf.placeholder(tf.bool, name='training')
         self.inference(self.x)
         self.loss_func(self.predictions, self.y_true)

@@ -28,10 +28,12 @@ class YoloV0(ANN):
         self.ph_train = None
         self.ph_coord_scale = None
         self.ph_noobj_scale = None
+        self.ph_isobj_scale = None
         # Model parameters
         if not params:
             params = {'coord_scale': 5,
                       'noobj_scale': 0.5,
+                      'isobj_scale': 1,
                       'training_set_imgs': '/Volumes/TRANSCEND/Data Sets/another_testset/imgs',
                       'training_set_labels': '/Volumes/TRANSCEND/Data Sets/another_testset/labels',
                       'test_set_img': '',
@@ -49,6 +51,7 @@ class YoloV0(ANN):
         self.img_size = img_size
         self.coord_scale = params.get('coord_scale')
         self.noobj_scale = params.get('noobj_scale')
+        self.isobj_scale = params.get('isobj_scale')
         self.train = params.get('training')
         self.batch_size = params.get('batch_size')
         self.learning_rate = params.get('learning_rate')
@@ -126,7 +129,8 @@ class YoloV0(ANN):
                         no_obj = tf.to_float(tf.not_equal(is_obj, 1))
                     # add confidence where object is present
                     with tf.variable_scope('obj_loss'):
-                        c_obj_loss = tf.reduce_sum(tf.multiply(is_obj, tf.pow(p_c - confidence, 2)), name='c_obj_loss')
+                        c_obj_loss = self.ph_isobj_scale * tf.reduce_sum(
+                            tf.multiply(is_obj, tf.pow(p_c - confidence, 2)), name='c_obj_loss')
                     # add confidence where object is not present
                     with tf.variable_scope('noobj_loss'):
                         c_noobj_loss = self.ph_noobj_scale * tf.reduce_sum(tf.multiply(no_obj, tf.pow(p_c - 0, 2)),
@@ -226,7 +230,8 @@ class YoloV0(ANN):
                                                           self.ph_learning_rate: self.learning_rate,
                                                           self.ph_coord_scale: self.coord_scale,
                                                           self.ph_noobj_scale: self.noobj_scale,
-                                                          self.ph_train: self.train})
+                                                          self.ph_train: False,
+                                                          self.ph_isobj_scale: self.isobj_scale})
                     summary_writer.add_summary(s, tf.train.global_step(self.sess, self.global_step))
                     summary_writer.flush()
                     loss, preds = self.sess.run([self.loss, self.predictions],
@@ -234,7 +239,8 @@ class YoloV0(ANN):
                                                            self.ph_learning_rate: self.learning_rate,
                                                            self.ph_coord_scale: self.coord_scale,
                                                            self.ph_noobj_scale: self.noobj_scale,
-                                                           self.ph_train: self.train})
+                                                           self.ph_train: False,
+                                                           self.ph_isobj_scale: self.isobj_scale})
                     print(np.asarray(preds, np.float32))
                     b_preds = self.predictions_to_boxes(preds)
                     b_true = self.predictions_to_boxes(labels)
@@ -271,7 +277,9 @@ class YoloV0(ANN):
                 self.sess.run([self.optimizer],
                               feed_dict={self.x: imgs, self.y_true: labels, self.ph_learning_rate: self.learning_rate,
                                          self.ph_coord_scale: self.coord_scale,
-                                         self.ph_noobj_scale: self.noobj_scale, self.ph_train: self.train})
+                                         self.ph_noobj_scale: self.noobj_scale,
+                                         self.ph_train: self.train,
+                                         self.ph_isobj_scale: self.isobj_scale})
                 t_f = time.time() - t_0
                 tf.logging.info('Global step: %s, Batch processed: %d/%d, Time to process batch: %.2f' % (
                     tf.train.global_step(self.sess, self.global_step), i, no_batches, t_f))

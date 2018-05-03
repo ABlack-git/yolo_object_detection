@@ -176,7 +176,7 @@ class YoloV0(ANN):
             self.predictions = super().create_fc_layer(flatten, [in_dim, out_dim], 'FC_1', activation=True,
                                                        act_param={'type': 'sigmoid', 'write_summary': True},
                                                        weight_init='Xavier',
-                                                       batch_norm=False)
+                                                       batch_norm=True)
 
     def _optimizer(self, optimizer='Adam', param=None, write_grads=True):
         if not self.optimizer:
@@ -454,7 +454,7 @@ class YoloV0(ANN):
                 graph = tf.get_default_graph()
                 self.x = graph.get_tensor_by_name('Input:0')
                 self.y_true = graph.get_tensor_by_name('GT_input:0')
-                self.predictions = graph.get_tensor_by_name('FC_1/output:0')
+                self.predictions = graph.get_tensor_by_name('FC_1/Sigmoid:0')
                 self.loss = graph.get_tensor_by_name('Loss_function/Loss/loss:0')
                 self.optimizer = graph.get_operation_by_name('Optimizer/optimizer')
                 self.global_step = graph.get_tensor_by_name('global_step:0')

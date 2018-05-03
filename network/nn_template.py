@@ -72,7 +72,7 @@ class ANN:
                 weights = tf.truncated_normal(w_shape, stddev=0.1)
             w = tf.Variable(weights, name='weights')
             b = tf.Variable(tf.constant(0.1, shape=[w_shape[3]]), name='biases')
-            conv = tf.nn.conv2d(x, w, strides=strides, padding='SAME')
+            conv = tf.nn.conv2d(x, w, strides=strides, padding='SAME', data_format='NHWC')
             self.summary_list.append(tf.summary.histogram('weights', w))
             self.summary_list.append(tf.summary.histogram('biases', b))
             out = tf.add(conv, b, name='output')

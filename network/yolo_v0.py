@@ -77,7 +77,7 @@ class YoloV0(ANN):
         self.ph_train = tf.placeholder(tf.bool, name='training')
         self.inference(self.x)
         self.loss_func(self.predictions, self.y_true)
-        self._optimizer(params.get('optimizer'), params.get('opt_param'))
+        self._optimizer(params.get('optimizer'), params.get('opt_param'), write_grads=False)
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver(max_to_keep=10)
 
@@ -145,7 +145,7 @@ class YoloV0(ANN):
 
     def inference(self, x):
         if not self.predictions:
-            act_param = {'type': 'leaky', 'param': 0.1}
+            act_param = {'type': 'leaky', 'param': 0.1, 'write_summary': False}
             conv1 = super().create_conv_layer(x, [3, 3, 3, 16], 'Conv_1', [1, 1, 1, 1], activation=True, pooling=True,
                                               act_param=act_param, weight_init='Xavier', batch_norm=False)
 
@@ -173,11 +173,12 @@ class YoloV0(ANN):
             flatten = tf.reshape(conv8, [-1, 3 * 2 * 256])
             out_dim = self.grid_size[0] * self.grid_size[1] * 5 * self.no_boxes
             in_dim = 3 * 2 * 256
-            self.predictions = super().create_fc_layer(flatten, [in_dim, out_dim], 'FC_1', activation=False,
-                                                       act_param={'type': 'sigmoid'}, weight_init='Xavier',
-                                                       batch_norm=False)
+            self.predictions = super().create_fc_layer(flatten, [in_dim, out_dim], 'FC_1', activation=True,
+                                                       act_param={'type': 'sigmoid', 'write_summary': True},
+                                                       weight_init='Xavier',
+                                                       batch_norm=True)
 
-    def _optimizer(self, optimizer='Adam', param=None):
+    def _optimizer(self, optimizer='Adam', param=None, write_grads=True):
         if not self.optimizer:
             with tf.name_scope('Optimizer'):
                 if optimizer == 'Adam':
@@ -200,9 +201,10 @@ class YoloV0(ANN):
                 with tf.control_dependencies(update_ops):
                     grads = self.optimizer.compute_gradients(self.loss)
                 self.optimizer = self.optimizer.apply_gradients(grads, global_step=self.global_step, name='optimizer')
-                for i, grad in enumerate(grads):
-                    self.summary_list.append(
-                        tf.summary.histogram("{}-grad".format(grads[i][1].name.replace(':0', '-0')), grads[i]))
+                if write_grads:
+                    for i, grad in enumerate(grads):
+                        self.summary_list.append(
+                            tf.summary.histogram("{}-grad".format(grads[i][1].name.replace(':0', '-0')), grads[i]))
 
     def optimize(self, epochs):
         now = datetime.datetime.now()

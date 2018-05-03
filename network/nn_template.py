@@ -52,7 +52,7 @@ class ANN:
             strides = [1, 1, 1, 1]
 
         if activation and act_param is None:
-            act_param = {'type': 'ReLU', 'param': None}
+            act_param = {'type': 'ReLU', 'param': None, 'write_summary': True}
 
         if pooling and pool_param is None:
             pool_param = {'type': 'max', 'kernel': [1, 2, 2, 1], 'strides': [1, 2, 2, 1], 'padding': 'SAME'}
@@ -81,11 +81,13 @@ class ANN:
             if activation:
                 if act_param.get('type') == 'ReLU':
                     act = tf.nn.relu(out, name='ReLu')
-                    self.summary_list.append(tf.summary.histogram('ReLU', act))
+                    if act_param.get('write_summary'):
+                        self.summary_list.append(tf.summary.histogram('ReLU', act))
                     out = act
                 elif act_param.get('type') == 'leaky':
                     act = tf.nn.leaky_relu(out, act_param.get('param'), name='Leaky_ReLU')
-                    self.summary_list.append(tf.summary.histogram('Leaky_ReLU', act))
+                    if act_param.get('write_summary'):
+                        self.summary_list.append(tf.summary.histogram('Leaky_ReLU', act))
                     out = act
             if pooling:
                 if pool_param.get('type') == 'max':
@@ -110,7 +112,7 @@ class ANN:
         :return:
         """
         if activation and act_param is None:
-            act_param = {'type': 'ReLU', 'param': -1}
+            act_param = {'type': 'ReLU', 'param': -1, 'write_summary': True}
 
             # if weight_init != 'Normal':
             #     tf.logging.warning('Currently weight initialization is supported with normal distribution. '
@@ -139,11 +141,13 @@ class ANN:
                     out = act
                 elif act_param.get('type') == 'leaky':
                     act = tf.nn.leaky_relu(out, act_param.get('param'), name='Leaky ReLU')
-                    self.summary_list.append(tf.summary.histogram('Leaky_ReLU', act))
+                    if act_param.get('write_summary'):
+                        self.summary_list.append(tf.summary.histogram('Leaky_ReLU', act))
                     out = act
                 elif act_param.get('type') == 'sigmoid':
                     act = tf.sigmoid(out, name='Sigmoid')
-                    self.summary_list.append(tf.summary.histogram('Sigmoid', act))
+                    if act_param.get('write_summary'):
+                        self.summary_list.append(tf.summary.histogram('Sigmoid', act))
                     out = act
             if dropout:
                 if dropout_param is not None:

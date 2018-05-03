@@ -71,13 +71,14 @@ class ANN:
             else:
                 weights = tf.truncated_normal(w_shape, stddev=0.1)
             w = tf.Variable(weights, name='weights')
-            b = tf.Variable(tf.constant(0.1, shape=[w_shape[3]]), name='biases')
             conv = tf.nn.conv2d(x, w, strides=strides, padding='SAME', data_format='NHWC')
             self.summary_list.append(tf.summary.histogram('weights', w))
-            self.summary_list.append(tf.summary.histogram('biases', b))
-            out = tf.add(conv, b, name='output')
             if batch_norm:
-                out = tf.layers.batch_normalization(out, training=self.ph_train, name='batch_norm_layer')
+                out = tf.layers.batch_normalization(conv, training=self.ph_train, name='batch_norm_layer')
+            else:
+                b = tf.Variable(tf.constant(0.1, shape=[w_shape[3]]), name='biases')
+                self.summary_list.append(tf.summary.histogram('biases', b))
+                out = tf.add(conv, b, name='output')
             if activation:
                 if act_param.get('type') == 'ReLU':
                     act = tf.nn.relu(out, name='ReLu')
@@ -128,12 +129,13 @@ class ANN:
             else:
                 weights = tf.truncated_normal(shape, stddev=0.1)
             w = tf.Variable(weights, name="weights")
-            b = tf.Variable(tf.constant(0.1, shape=[shape[1]]), name="biases")
             self.summary_list.append(tf.summary.histogram("weights", w))
-            self.summary_list.append(tf.summary.histogram("biases", b))
-            out = tf.add(tf.matmul(x, w), b, name='output')
             if batch_norm:
-                out = tf.layers.batch_normalization(out, training=self.ph_train, name='Batch_norm_layer')
+                out = tf.layers.batch_normalization(tf.matmul(x, w), training=self.ph_train, name='Batch_norm_layer')
+            else:
+                b = tf.Variable(tf.constant(0.1, shape=[shape[1]]), name="biases")
+                self.summary_list.append(tf.summary.histogram("biases", b))
+                out = tf.add(tf.matmul(x, w), b, name='output')
             if activation:
                 if act_param.get('type') == 'ReLU':
                     act = tf.nn.relu(out, name='ReLU')

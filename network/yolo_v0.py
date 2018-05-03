@@ -460,7 +460,7 @@ class YoloV0(ANN):
                 self.global_step = graph.get_tensor_by_name('global_step:0')
                 self.ph_train = graph.get_tensor_by_name('training:0')
                 self.ph_learning_rate = graph.get_tensor_by_name('learning_rate:0')
-                self.ph_noobj_scale = graph.get_tensor_by_name('noobj_scle:0')
+                self.ph_noobj_scale = graph.get_tensor_by_name('noobj_scale:0')
                 self.ph_coord_scale = graph.get_tensor_by_name('coord_scale:0')
                 # self.saver = tf.train.Saver(max_to_keep=10)
                 self.restored = True

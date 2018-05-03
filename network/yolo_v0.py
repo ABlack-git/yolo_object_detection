@@ -206,10 +206,10 @@ class YoloV0(ANN):
                         self.summary_list.append(
                             tf.summary.histogram("{}-grad".format(grads[i][1].name.replace(':0', '-0')), grads[i]))
 
-    def optimize(self, epochs):
+    def optimize(self, epochs, sum_path):
         now = datetime.datetime.now()
         summary_folder = '%d_%d_%d__%d-%d' % (now.day, now.month, now.year, now.hour, now.minute)
-        summary_writer = tf.summary.FileWriter(os.path.join('summaries', summary_folder), graph=tf.get_default_graph())
+        summary_writer = tf.summary.FileWriter(os.path.join(sum_path, summary_folder), graph=tf.get_default_graph())
         summary = tf.summary.merge_all()
         tf.logging.info(
             'Starting to train model. Current global step is %s' % tf.train.global_step(self.sess, self.global_step))

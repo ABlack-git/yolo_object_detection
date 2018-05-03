@@ -18,7 +18,7 @@ class ANN:
     def loss_func(self, predictions, labels):
         raise NotImplementedError
 
-    def optimize(self, epochs):
+    def optimize(self, epochs, summary_folder):
         raise NotImplementedError
 
     def save(self, path, name):

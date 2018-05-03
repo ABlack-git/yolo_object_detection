@@ -176,7 +176,7 @@ class YoloV0(ANN):
             self.predictions = super().create_fc_layer(flatten, [in_dim, out_dim], 'FC_1', activation=True,
                                                        act_param={'type': 'sigmoid', 'write_summary': True},
                                                        weight_init='Xavier',
-                                                       batch_norm=True)
+                                                       batch_norm=False)
 
     def _optimizer(self, optimizer='Adam', param=None, write_grads=True):
         if not self.optimizer:

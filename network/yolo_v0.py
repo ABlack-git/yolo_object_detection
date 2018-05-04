@@ -471,6 +471,7 @@ class YoloV0(ANN):
                 self.ph_learning_rate = graph.get_tensor_by_name('learning_rate:0')
                 self.ph_noobj_scale = graph.get_tensor_by_name('noobj_scale:0')
                 self.ph_coord_scale = graph.get_tensor_by_name('coord_scale:0')
+                self.ph_isobj_scale = graph.get_tensor_by_name('isobj_scale:0')
                 # self.saver = tf.train.Saver(max_to_keep=10)
                 self.restored = True
             except KeyError as e:

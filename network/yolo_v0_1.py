@@ -5,8 +5,8 @@ import tensorflow as tf
 
 class YoloV01(YoloV0):
 
-    def __init__(self, grid_size, img_size, params):
-        super(YoloV01, self).__init__(grid_size, img_size, params)
+    def __init__(self, grid_size, img_size, params, restore=False):
+        super(YoloV01, self).__init__(grid_size, img_size, params, restore=restore)
 
     def loss_func(self, y_pred, y_true):
         if not self.loss:

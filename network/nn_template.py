@@ -78,7 +78,7 @@ class ANN:
             else:
                 b = tf.Variable(tf.constant(0.1, shape=[w_shape[3]]), name='biases')
                 self.summary_list.append(tf.summary.histogram('biases', b))
-                out = tf.add(conv, b, name='output')
+                out = tf.add(conv, b, name='conv_and_bias')
             if activation:
                 if act_param.get('type') == 'ReLU':
                     act = tf.nn.relu(out, name='ReLu')
@@ -95,6 +95,7 @@ class ANN:
                     out = tf.nn.max_pool(out, pool_param.get('kernel'), pool_param.get('strides'),
                                          pool_param.get('padding'),
                                          name='MaxPool')
+            out = tf.identity(out, name='output')
         return out
 
     def create_fc_layer(self, x, shape, name, activation=True, dropout=False, act_param=None, dropout_param=None,
@@ -135,7 +136,7 @@ class ANN:
             else:
                 b = tf.Variable(tf.constant(0.1, shape=[shape[1]]), name="biases")
                 self.summary_list.append(tf.summary.histogram("biases", b))
-                out = tf.add(tf.matmul(x, w), b, name='output')
+                out = tf.add(tf.matmul(x, w), b, name='weighted_sum')
             if activation:
                 if act_param.get('type') == 'ReLU':
                     act = tf.nn.relu(out, name='ReLU')
@@ -157,4 +158,6 @@ class ANN:
                 else:
                     tf.logging.warning('Dropout flag was set to True in layer %s, but parameter was not specified. '
                                        'Continue without dropout layer' % name)
+            out = tf.identity(out, name='output')
+            self.summary_list.append(tf.summary.histogram('Output', out))
         return out

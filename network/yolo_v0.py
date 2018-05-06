@@ -272,8 +272,8 @@ class YoloV0(ANN):
                 if i % 200 == 0:
                     self.test_model()
 
-                if i == int(self.training_set.get_number_of_batches(self.batch_size) / 2):
-                    self.save(self.save_path, 'model')
+                # if i == int(self.training_set.get_number_of_batches(self.batch_size) / 2):
+                #     self.save(self.save_path, 'model')
 
                 self.sess.run([self.optimizer],
                               feed_dict={self.x: imgs, self.y_true: labels, self.ph_learning_rate: self.learning_rate,
@@ -284,6 +284,8 @@ class YoloV0(ANN):
                 t_f = time.time() - t_0
                 tf.logging.info('Global step: %s, Batch processed: %d/%d, Time to process batch: %.2f' % (
                     tf.train.global_step(self.sess, self.global_step), i, no_batches, t_f))
+            # save every epoch
+            self.save(self.save_path, 'model')
 
     def tf_iou(self, y_true, y_pred):
         """

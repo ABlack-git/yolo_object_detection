@@ -55,24 +55,6 @@ class YoloV01(YoloV0):
                     is_obj = y_true[:, :, 4]
                 with tf.variable_scope('no_obj'):
                     no_obj = tf.to_float(tf.not_equal(is_obj, 1))
-                # with tf.variable_scope('t_x'):
-                #     t_x = y_true[:, :, 0]
-                # with tf.variable_scope('t_y'):
-                #     t_y = y_true[:, :, 1]
-                # with tf.variable_scope('t_w'):
-                #     t_w = y_true[:, :, 2]
-                # with tf.variable_scope('t_h'):
-                #     t_h = y_true[:, :, 3]
-                # with tf.variable_scope('p_x'):
-                #     p_x = y_pred[:, :, 0]
-                # with tf.variable_scope('p_y'):
-                #     p_y = y_pred[:, :, 1]
-                # with tf.variable_scope('p_w'):
-                #     p_w = y_pred[:, :, 2]
-                # with tf.variable_scope('p_h'):
-                #     p_h = y_pred[:, :, 3]
-                # with tf.variable_scope('p_c'):
-                #     p_c = y_pred[:, :, 4]
 
                 isobj_loss = self.ph_isobj_scale * tf.reduce_sum(tf.multiply(is_obj, tf.pow(y_pred - 1, 2)),
                                                                  name='isobj_loss')
@@ -112,22 +94,16 @@ class YoloV01(YoloV0):
                                                            self.ph_train: False,
                                                            self.ph_isobj_scale: self.isobj_scale,
                                                            self.ph_noobj_scale: self.noobj_scale})
-                    # Compute accuracy
-                    preds = np.asarray(preds)
-                    preds[np.where(preds >= 0.6)] = 1
-                    preds[np.where(preds < 0.6)] = 0
-                    tmp_labels = np.reshape(labels,
-                                            [self.batch_size, self.grid_size[0] * self.grid_size[1], 5])
-                    tp = np.equal(preds, tmp_labels[:, :, 4]).astype(int)
-                    # tp = (preds == labels[:, 4]).astype(dtype=int)
-                    accuracy = np.sum(tp) / (self.grid_size[0] * self.grid_size[1] * self.batch_size)
-                    self.log_scalar('Accuracy', accuracy, summary_writer, 'Statistics')
+                    # Compute statistics
+                    precision, recall, no_tp = self.compute_stats(preds, labels)
+                    self.log_scalar('Precision', precision, summary_writer, 'Statistics')
+                    self.log_scalar('Recall', recall, summary_writer, 'Statistics')
                     val_tf = time.time() - val_t0
                     tf.logging.info('Statistics on training set')
-                    tf.logging.info('Step: %s, loss: %.2f, accuracy: %.2f, time: %.2f' % (
-                        tf.train.global_step(self.sess, self.global_step), loss, accuracy, val_tf))
+                    tf.logging.info('Step: %s, no_tp: %d, loss: %.2f, precision: %.2f, recall: %.2f, time: %.2f' % (
+                        tf.train.global_step(self.sess, self.global_step), no_tp,loss, precision, recall, val_tf))
 
-                if (g_step + 1) % 100 == 0:
+                if (g_step + 1) % 250 == 0:
                     self.test_model()
 
                 self.sess.run([self.optimizer],
@@ -141,3 +117,19 @@ class YoloV01(YoloV0):
                     tf.train.global_step(self.sess, self.global_step), i + 1, no_batches, t_f))
                 # save every epoch
             self.save(self.save_path, 'model')
+
+    def compute_stats(self, preds, labels):
+        preds = np.asarray(preds)
+        preds[np.where(preds > 0.5)] = 1
+        preds[np.where(preds <= 0.5)] = 0
+        no_cells = self.grid_size[0] * self.grid_size[1]
+        tmp_labels = np.reshape(labels,
+                                [self.batch_size, no_cells, 5])
+        no_tp = np.sum(preds[np.where(tmp_labels == 1)])
+        preds[np.where(tmp_labels == 1)] = 0
+        no_fp = np.sum(preds)
+        no_fn = np.sum(
+            np.equal(tmp_labels[:, :, 4], np.ones([self.batch_size, no_cells])).astype(int)) - no_tp
+        precision = no_tp / (no_tp + no_fp) if (no_tp + no_fp) > 0 else 0
+        recall = no_tp / (no_tp + no_fn) if (no_tp + no_fn) > 0 else 0
+        return precision, recall, int(no_tp)

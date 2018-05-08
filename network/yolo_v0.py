@@ -283,7 +283,7 @@ class YoloV0(ANN):
                                          self.ph_isobj_scale: self.isobj_scale})
                 t_f = time.time() - t_0
                 tf.logging.info('Global step: %s, Batch processed: %d/%d, Time to process batch: %.2f' % (
-                    tf.train.global_step(self.sess, self.global_step), i, no_batches, t_f))
+                    tf.train.global_step(self.sess, self.global_step), i + 1, no_batches, t_f))
             # save every epoch
             self.save(self.save_path, 'model')
 
@@ -456,7 +456,7 @@ class YoloV0(ANN):
         self.saver.save(self.sess, os.path.join(path, name),
                         global_step=tf.train.global_step(self.sess, self.global_step))
 
-    def restore(self, path, meta):
+    def restore(self, path, meta=None, var_list=None):
         if not self.restored:
             self.saver = tf.train.import_meta_graph(meta)
             # self.saver = tf.train.Saver(max_to_keep=10)

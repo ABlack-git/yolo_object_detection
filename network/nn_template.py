@@ -24,7 +24,7 @@ class ANN:
     def save(self, path, name):
         raise NotImplementedError
 
-    def restore(self, path, meta):
+    def restore(self, path, meta=None, var_list=None):
         raise NotImplementedError
 
     def create_conv_layer(self, x, w_shape, name, strides=None, activation=True, pooling=True, act_param=None,

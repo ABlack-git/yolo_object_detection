@@ -105,14 +105,15 @@ class YoloV01(YoloV0):
                     preds = np.asarray(preds)
                     preds[np.where(preds >= 0.6)] = 1
                     preds[np.where(preds < 0.6)] = 0
-                    labels = np.reshape(labels,
+                    tmp_labels = np.reshape(labels,
                                         [self.batch_size, self.grid_size[0] * self.grid_size[1], 5])
-                    tp = (preds == labels[:, 4]).astype(dtype=int)
+                    tp=np.equal(preds, tmp_labels[:,:,4]).astype(int)
+                    # tp = (preds == labels[:, 4]).astype(dtype=int)
                     accuracy = np.sum(tp) / (self.grid_size[0] * self.grid_size[1] * self.batch_size)
                     self.log_scalar('Accuracy', accuracy, summary_writer, 'Statistics')
                     val_tf = time.time() - val_t0
                     tf.logging.info('Statistics on training set')
-                    tf.logging.info('Step: %s, loss: %f.4, accuracy: %f.3, time: %f.3' % (
+                    tf.logging.info('Step: %s, loss: %.2f, accuracy: %.2f, time: %.2f' % (
                         tf.train.global_step(self.sess, self.global_step), loss, accuracy, val_tf))
 
                 if (g_step + 1) % 100 == 0:

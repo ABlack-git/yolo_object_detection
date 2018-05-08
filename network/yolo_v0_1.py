@@ -53,6 +53,8 @@ class YoloV01(YoloV0):
                 # define name scopes
                 with tf.variable_scope('is_obj'):
                     is_obj = y_true[:, :, 4]
+                with tf.variable_scope('no_obj'):
+                    no_obj = tf.to_float(tf.not_equal(is_obj, 1))
                 # with tf.variable_scope('t_x'):
                 #     t_x = y_true[:, :, 0]
                 # with tf.variable_scope('t_y'):
@@ -72,9 +74,14 @@ class YoloV01(YoloV0):
                 # with tf.variable_scope('p_c'):
                 #     p_c = y_pred[:, :, 4]
 
-                loss = tf.reduce_sum(tf.pow(y_pred - is_obj, 2))
-                self.summary_list.append(tf.summary.scalar('Loss', loss))
-                self.loss = loss
+                isobj_loss = self.ph_isobj_scale * tf.reduce_sum(tf.multiply(is_obj, tf.pow(y_pred - 1, 2)),
+                                                                 name='isobj_loss')
+                noobj_loss = self.ph_noobj_scale * tf.reduce_sum(tf.multiply(no_obj, tf.pow(y_pred - 0, 2)),
+                                                                 name='noobj_loss')
+                self.summary_list.append(tf.summary.scalar('isobj_loss', isobj_loss))
+                self.summary_list.append(tf.summary.scalar('noobj_loss', noobj_loss))
+                self.loss = tf.add(isobj_loss, noobj_loss, name='total_loss')
+                self.summary_list.append(tf.summary.scalar('total_loss', self.loss))
 
     def optimize(self, epochs, sum_path):
         now = datetime.datetime.now()
@@ -94,20 +101,24 @@ class YoloV01(YoloV0):
                     val_t0 = time.time()
                     s = self.sess.run(summary, feed_dict={self.x: imgs, self.y_true: labels,
                                                           self.ph_learning_rate: self.learning_rate,
-                                                          self.ph_train: False})
+                                                          self.ph_train: False,
+                                                          self.ph_isobj_scale: self.isobj_scale,
+                                                          self.ph_noobj_scale: self.noobj_scale})
                     summary_writer.add_summary(s, tf.train.global_step(self.sess, self.global_step))
                     summary_writer.flush()
-                    loss, preds = self.sess.run([self.loss, self.predictions],
+                    preds, loss = self.sess.run([self.predictions, self.loss],
                                                 feed_dict={self.x: imgs, self.y_true: labels,
                                                            self.ph_learning_rate: self.learning_rate,
-                                                           self.ph_train: False})
+                                                           self.ph_train: False,
+                                                           self.ph_isobj_scale: self.isobj_scale,
+                                                           self.ph_noobj_scale: self.noobj_scale})
                     # Compute accuracy
                     preds = np.asarray(preds)
                     preds[np.where(preds >= 0.6)] = 1
                     preds[np.where(preds < 0.6)] = 0
                     tmp_labels = np.reshape(labels,
-                                        [self.batch_size, self.grid_size[0] * self.grid_size[1], 5])
-                    tp=np.equal(preds, tmp_labels[:,:,4]).astype(int)
+                                            [self.batch_size, self.grid_size[0] * self.grid_size[1], 5])
+                    tp = np.equal(preds, tmp_labels[:, :, 4]).astype(int)
                     # tp = (preds == labels[:, 4]).astype(dtype=int)
                     accuracy = np.sum(tp) / (self.grid_size[0] * self.grid_size[1] * self.batch_size)
                     self.log_scalar('Accuracy', accuracy, summary_writer, 'Statistics')
@@ -122,7 +133,9 @@ class YoloV01(YoloV0):
                 self.sess.run([self.optimizer],
                               feed_dict={self.x: imgs, self.y_true: labels,
                                          self.ph_learning_rate: self.learning_rate,
-                                         self.ph_train: True})
+                                         self.ph_train: True,
+                                         self.ph_isobj_scale: self.isobj_scale,
+                                         self.ph_noobj_scale: self.noobj_scale})
                 t_f = time.time() - t_0
                 tf.logging.info('Global step: %s, Batch processed: %d/%d, Time to process batch: %.2f' % (
                     tf.train.global_step(self.sess, self.global_step), i + 1, no_batches, t_f))

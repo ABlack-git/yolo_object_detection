@@ -101,7 +101,7 @@ class YoloV01(YoloV0):
                     val_tf = time.time() - val_t0
                     tf.logging.info('Statistics on training set')
                     tf.logging.info('Step: %s, no_tp: %d, loss: %.2f, precision: %.2f, recall: %.2f, time: %.2f' % (
-                        tf.train.global_step(self.sess, self.global_step), no_tp,loss, precision, recall, val_tf))
+                        tf.train.global_step(self.sess, self.global_step), no_tp, loss, precision, recall, val_tf))
 
                 if (g_step + 1) % 250 == 0:
                     self.test_model()
@@ -125,8 +125,8 @@ class YoloV01(YoloV0):
         no_cells = self.grid_size[0] * self.grid_size[1]
         tmp_labels = np.reshape(labels,
                                 [self.batch_size, no_cells, 5])
-        no_tp = np.sum(preds[np.where(tmp_labels == 1)])
-        preds[np.where(tmp_labels == 1)] = 0
+        no_tp = np.sum(preds[np.where(tmp_labels[:, :, 4] == 1)])
+        preds[np.where(tmp_labels[:, :, 4] == 1)] = 0
         no_fp = np.sum(preds)
         no_fn = np.sum(
             np.equal(tmp_labels[:, :, 4], np.ones([self.batch_size, no_cells])).astype(int)) - no_tp

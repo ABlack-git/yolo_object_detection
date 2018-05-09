@@ -133,3 +133,28 @@ class YoloV01(YoloV0):
         precision = no_tp / (no_tp + no_fp) if (no_tp + no_fp) > 0 else 0
         recall = no_tp / (no_tp + no_fn) if (no_tp + no_fn) > 0 else 0
         return precision, recall, int(no_tp)
+
+    def restore(self, path, meta=None, var_list=None):
+        if not self.restored:
+            self.saver = tf.train.import_meta_graph(meta)
+            # self.saver = tf.train.Saver(max_to_keep=10)
+            try:
+                self.saver.restore(self.sess, save_path=path)
+                graph = tf.get_default_graph()
+                self.x = graph.get_tensor_by_name('Input:0')
+                self.y_true = graph.get_tensor_by_name('GT_input:0')
+                self.predictions = graph.get_tensor_by_name('FC_1/Sigmoid:0')
+                self.loss = graph.get_tensor_by_name('Loss_function/Loss/total_loss:0')
+                self.optimizer = graph.get_operation_by_name('Optimizer/optimizer')
+                self.global_step = graph.get_tensor_by_name('global_step:0')
+                self.ph_train = graph.get_tensor_by_name('training:0')
+                self.ph_learning_rate = graph.get_tensor_by_name('learning_rate:0')
+                self.ph_noobj_scale = graph.get_tensor_by_name('noobj_scale:0')
+                self.ph_coord_scale = graph.get_tensor_by_name('coord_scale:0')
+                self.ph_isobj_scale = graph.get_tensor_by_name('isobj_scale:0')
+                # self.saver = tf.train.Saver(max_to_keep=10)
+                self.restored = True
+            except KeyError as e:
+                tf.logging.fatal("Restoring was not successful. KeyError exception was raised.")
+                tf.logging.fatal(e)
+                exit(1)

@@ -144,7 +144,7 @@ class YoloV01(YoloV0):
                 self.x = graph.get_tensor_by_name('Input:0')
                 self.y_true = graph.get_tensor_by_name('GT_input:0')
                 self.predictions = graph.get_tensor_by_name('FC_1/Sigmoid:0')
-                self.loss = graph.get_tensor_by_name('Loss_function/Loss/total_loss:0')
+                self.loss = graph.get_tensor_by_name('Loss_function/total_loss:0')
                 self.optimizer = graph.get_operation_by_name('Optimizer/optimizer')
                 self.global_step = graph.get_tensor_by_name('global_step:0')
                 self.ph_train = graph.get_tensor_by_name('training:0')

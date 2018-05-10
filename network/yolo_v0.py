@@ -36,8 +36,8 @@ class YoloV0(ANN):
                       'isobj_scale': 1,
                       'training_set_imgs': '/Volumes/TRANSCEND/Data Sets/another_testset/imgs',
                       'training_set_labels': '/Volumes/TRANSCEND/Data Sets/another_testset/labels',
-                      'test_set_img': '',
-                      'test_set_labels': '',
+                      'testing_set_imgs': '',
+                      'testing_set_labels': '',
                       'batch_size': 1,
                       'learning_rate': 0.01,
                       'optimizer': 'SGD',
@@ -60,7 +60,7 @@ class YoloV0(ANN):
         self.training_set = DatasetGenerator(params.get('training_set_imgs'), params.get('training_set_labels'),
                                              self.img_size, grid_size, 1)
         self.valid_set = None
-        self.test_set = DatasetGenerator(params.get('testing_set_img'), params.get('testing_set_labels'), self.img_size,
+        self.test_set = DatasetGenerator(params.get('testing_set_imgs'), params.get('testing_set_labels'), self.img_size,
                                          grid_size, 1)
         self.save_path = params.get('save_path')
         # Model initialization

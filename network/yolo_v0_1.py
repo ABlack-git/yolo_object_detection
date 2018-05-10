@@ -105,7 +105,7 @@ class YoloV01(YoloV0):
 
                 if g_step % 200 == 0:
                     tf.logging.info('Statistics on testing set at step %s' % g_step)
-                    self.test_model(self.batch_size)
+                    self.test_model(self.batch_size, summary_writer)
 
                 self.sess.run([self.optimizer],
                               feed_dict={self.x: imgs, self.y_true: labels,
@@ -160,7 +160,7 @@ class YoloV01(YoloV0):
                 tf.logging.fatal(e)
                 exit(1)
 
-    def test_model(self, batch_size):
+    def test_model(self, batch_size, summary_writer=None):
         t_0 = time.time()
         batches = self.test_set.get_minibatch(batch_size)
         no_batches = self.test_set.get_number_of_batches(batch_size)
@@ -173,4 +173,7 @@ class YoloV01(YoloV0):
         avg_precision = np.sum(precision) / no_batches
         avg_recall = np.sum(recall) / no_batches
         t_f = time.time() - t_0
+        if summary_writer is not None:
+            self.log_scalar('Avg_precision', avg_precision, summary_writer)
+            self.log_scalar('Avg_recall', avg_recall, summary_writer)
         tf.logging.info('Avg_precision: %.4f, avg_recall: %.4f, time: %.2f' % (avg_precision, avg_recall, t_f))

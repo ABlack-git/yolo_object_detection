@@ -31,12 +31,12 @@ class YoloV0(ANN):
         self.ph_noobj_scale = None
         self.ph_isobj_scale = None
         # Model parameters
-        if not params:
+        if params is None:
             params = {'coord_scale': 5,
                       'noobj_scale': 0.5,
                       'isobj_scale': 1,
-                      'training_set_imgs': '/Volumes/TRANSCEND/Data Sets/another_testset/imgs',
-                      'training_set_labels': '/Volumes/TRANSCEND/Data Sets/another_testset/labels',
+                      'training_set_imgs': '',
+                      'training_set_labels': '',
                       'testing_set_imgs': '',
                       'testing_set_labels': '',
                       'batch_size': 1,
@@ -44,8 +44,7 @@ class YoloV0(ANN):
                       'optimizer': 'SGD',
                       'opt_para': None,
                       'threshold': 0.5,
-                      'save_path': 'CheckPoints',
-                      'training': True}
+                      'save_path': 'CheckPoints'}
         self.restored = False
         self.no_boxes = 1
         self.grid_size = grid_size
@@ -53,7 +52,6 @@ class YoloV0(ANN):
         self.coord_scale = params.get('coord_scale')
         self.noobj_scale = params.get('noobj_scale')
         self.isobj_scale = params.get('isobj_scale')
-        self.train = params.get('training')
         self.batch_size = params.get('batch_size')
         self.learning_rate = params.get('learning_rate')
         self.nms_threshold = params.get('threshold')
@@ -282,7 +280,7 @@ class YoloV0(ANN):
                               feed_dict={self.x: imgs, self.y_true: labels, self.ph_learning_rate: self.learning_rate,
                                          self.ph_coord_scale: self.coord_scale,
                                          self.ph_noobj_scale: self.noobj_scale,
-                                         self.ph_train: self.train,
+                                         self.ph_train: True,
                                          self.ph_isobj_scale: self.isobj_scale})
                 t_f = time.time() - t_0
                 tf.logging.info('Global step: %s, Batch processed: %d/%d, Time to process batch: %.2f' % (
@@ -369,7 +367,7 @@ class YoloV0(ANN):
         :return: Returns ALL boxes predicted by the network. Boxes coordinates corespond to pixels.
         Shape of returned tensor is [batch_size, S*S, 5]
         """
-        preds = np.reshape(preds, [-1, self.grid_size[0] * self.grid_size[1], 5])
+        preds = np.reshape(preds, [self.batch_size, self.grid_size[0] * self.grid_size[1], 5])
         counter_i = 0
         counter_j = 0
         for i in range(self.grid_size[0] * self.grid_size[1]):

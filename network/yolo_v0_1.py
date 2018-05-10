@@ -4,7 +4,7 @@ import datetime
 import os
 import time
 import numpy as np
-
+import cv2
 
 class YoloV01(YoloV0):
 
@@ -177,6 +177,22 @@ class YoloV01(YoloV0):
             self.log_scalar('Avg_precision', avg_precision, summary_writer, name='Statistics')
             self.log_scalar('Avg_recall', avg_recall, summary_writer, name='Statistics')
         tf.logging.info('Avg_precision: %.4f, avg_recall: %.4f, time: %.2f' % (avg_precision, avg_recall, t_f))
+
+    def predictions_to_cells(self, preds):
+        w_cells = self.grid_size[0]
+        h_cells = self.grid_size[1]
+        img_width = self.img_size[0]
+        img_height = self.img_size[1]
+        c_width = img_width / w_cells
+        c_height = img_height / h_cells
+        coords = []
+        for _ in preds:
+            for p_i, p in enumerate(preds):
+                if p > 0.5:
+                    x = (p_i % w_cells) * c_width + int(c_width / 2)
+                    y = (np.floor(p_i / w_cells)) * c_height + int(c_height / 2)
+                    coords.append([x, y])
+        return coords
 
     def print_trainable_variables(self):
         for var in tf.trainable_variables:

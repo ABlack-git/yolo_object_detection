@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import os
 
 
 def draw_bbox(data, img):
@@ -17,8 +18,9 @@ def draw_grid(img, grid_size):
 
 
 def draw_centers(img, boxes):
-    for box in boxes:
-        cv2.circle(img, (box[0], box[1]), 2, (0, 0, 255), -1)
+    for _ in boxes:
+        for box in boxes:
+            cv2.circle(img, (box[0], box[1]), 2, (0, 0, 255), -1)
 
 
 def covert_to_centre(boxes):
@@ -65,3 +67,19 @@ def iou(boxes_a, boxes_b):
     b_area = np.multiply(boxes_b[:, 2] - boxes_b[:, 0] + 1, boxes_b[:, 3] - boxes_b[:, 1] + 1)
     union_area = a_area + b_area - inter_area
     return np.divide(inter_area, union_area)
+
+
+def list_of_images(path):
+    tmp = os.listdir(path)
+    imgs = []
+    for img in tmp:
+        if not img.startswith('.'):
+            imgs.append(img)
+    return imgs
+
+
+def resize_img(img, image_h, image_w):
+    height, width = img.shape[:2]
+    if height > image_h or width > image_w:
+        img = cv2.resize(img, (image_w, image_h), interpolation=cv2.INTER_AREA)
+    return img

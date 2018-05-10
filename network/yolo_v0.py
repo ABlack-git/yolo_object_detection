@@ -18,6 +18,7 @@ class YoloV0(ANN):
         :param restore: Boolean. True if model should be restored from saved parameters. False if new model should be
         created
         """
+        self.params = params
         self.set_logger_verbosity()
         # Graph elements and tensorflow functions
         super(YoloV0, self).__init__()
@@ -60,7 +61,8 @@ class YoloV0(ANN):
         self.training_set = DatasetGenerator(params.get('training_set_imgs'), params.get('training_set_labels'),
                                              self.img_size, grid_size, 1)
         self.valid_set = None
-        self.test_set = DatasetGenerator(params.get('testing_set_imgs'), params.get('testing_set_labels'), self.img_size,
+        self.test_set = DatasetGenerator(params.get('testing_set_imgs'), params.get('testing_set_labels'),
+                                         self.img_size,
                                          grid_size, 1)
         self.save_path = params.get('save_path')
         # Model initialization
@@ -358,7 +360,7 @@ class YoloV0(ANN):
     def get_predictions(self, x):
         if x is None:
             raise TypeError
-        return self.sess.run(self.predictions, feed_dict={self.x: x, self.ph_train: self.train})
+        return self.sess.run(self.predictions, feed_dict={self.x: x, self.ph_train: False})
 
     def predictions_to_boxes(self, preds):
         """
@@ -459,10 +461,18 @@ class YoloV0(ANN):
 
     def restore(self, path, meta=None, var_list=None):
         if not self.restored:
-            self.saver = tf.train.import_meta_graph(meta)
-            # self.saver = tf.train.Saver(max_to_keep=10)
-            try:
+            if meta is not None:
+                self.saver = tf.train.import_meta_graph(meta)
                 self.saver.restore(self.sess, save_path=path)
+            elif var_list is not None:
+                self.__create_network(self.params)
+                saver = tf.train.Saver(var_list)
+                saver.restore(self.sess, save_path=path)
+            else:
+                tf.logging.info('Restore pass was not specified, exiting.')
+                exit(1)
+            try:
+
                 graph = tf.get_default_graph()
                 self.x = graph.get_tensor_by_name('Input:0')
                 self.y_true = graph.get_tensor_by_name('GT_input:0')

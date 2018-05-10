@@ -177,3 +177,7 @@ class YoloV01(YoloV0):
             self.log_scalar('Avg_precision', avg_precision, summary_writer, name='Statistics')
             self.log_scalar('Avg_recall', avg_recall, summary_writer, name='Statistics')
         tf.logging.info('Avg_precision: %.4f, avg_recall: %.4f, time: %.2f' % (avg_precision, avg_recall, t_f))
+
+    def print_trainable_variables(self):
+        for var in tf.trainable_variables:
+            print(var)

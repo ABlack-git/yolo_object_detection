@@ -186,8 +186,8 @@ class YoloV01(YoloV0):
         c_width = img_width / w_cells
         c_height = img_height / h_cells
         coords = []
-        for _ in preds:
-            for p_i, p in enumerate(preds):
+        for batch in preds:
+            for p_i, p in enumerate(batch):
                 if p > 0.5:
                     x = (p_i % w_cells) * c_width + int(c_width / 2)
                     y = (np.floor(p_i / w_cells)) * c_height + int(c_height / 2)

@@ -35,10 +35,10 @@ class YoloV0(ANN):
             params = {'coord_scale': 5,
                       'noobj_scale': 0.5,
                       'isobj_scale': 1,
-                      'training_set_imgs': '',
-                      'training_set_labels': '',
-                      'testing_set_imgs': '',
-                      'testing_set_labels': '',
+                      'training_set_imgs': None,
+                      'training_set_labels': None,
+                      'testing_set_imgs': None,
+                      'testing_set_labels': None,
                       'batch_size': 1,
                       'learning_rate': 0.01,
                       'optimizer': 'SGD',
@@ -56,12 +56,14 @@ class YoloV0(ANN):
         self.learning_rate = params.get('learning_rate')
         self.nms_threshold = params.get('threshold')
         # Data sets
-        self.training_set = DatasetGenerator(params.get('training_set_imgs'), params.get('training_set_labels'),
-                                             self.img_size, grid_size, 1)
+        if params.get('training_set_imgs') is not None:
+            self.training_set = DatasetGenerator(params.get('training_set_imgs'), params.get('training_set_labels'),
+                                                 self.img_size, grid_size, 1)
         self.valid_set = None
-        self.test_set = DatasetGenerator(params.get('testing_set_imgs'), params.get('testing_set_labels'),
-                                         self.img_size,
-                                         grid_size, 1)
+        if params.get('testing_set_imgs') is not None:
+            self.test_set = DatasetGenerator(params.get('testing_set_imgs'), params.get('testing_set_labels'),
+                                             self.img_size,
+                                             grid_size, 1)
         self.save_path = params.get('save_path')
         # Model initialization
         self.open_sess()

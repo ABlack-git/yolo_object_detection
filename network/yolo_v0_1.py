@@ -103,8 +103,9 @@ class YoloV01(YoloV0):
                     tf.logging.info('Step: %s, no_tp: %d, loss: %.2f, precision: %.2f, recall: %.2f, time: %.2f' % (
                         tf.train.global_step(self.sess, self.global_step), no_tp, loss, precision, recall, val_tf))
 
-                if (g_step + 1) % 250 == 0:
-                    self.test_model()
+                if g_step % 200 == 0:
+                    tf.logging.info('Statistics on testing set at step %s' % g_step)
+                    self.test_model(self.batch_size)
 
                 self.sess.run([self.optimizer],
                               feed_dict={self.x: imgs, self.y_true: labels,
@@ -158,3 +159,18 @@ class YoloV01(YoloV0):
                 tf.logging.fatal("Restoring was not successful. KeyError exception was raised.")
                 tf.logging.fatal(e)
                 exit(1)
+
+    def test_model(self, batch_size):
+        t_0 = time.time()
+        batches = self.test_set.get_minibatch(batch_size)
+        no_batches = self.test_set.get_number_of_batches(batch_size)
+        precision = np.zeros(no_batches)
+        recall = np.zeros(no_batches)
+        for b in range(no_batches):
+            imgs, labels = next(batches)
+            preds = self.get_predictions(imgs)
+            precision[b], recall[b], _ = self.compute_stats(preds, labels)
+        avg_precision = np.sum(precision) / no_batches
+        avg_recall = np.sum(recall) / no_batches
+        t_f = time.time() - t_0
+        tf.logging.info('Avg_precision: %.4f, avg_recall: %.4f, time: %.2f' % (avg_precision, avg_recall, t_f))

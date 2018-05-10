@@ -174,6 +174,6 @@ class YoloV01(YoloV0):
         avg_recall = np.sum(recall) / no_batches
         t_f = time.time() - t_0
         if summary_writer is not None:
-            self.log_scalar('Avg_precision', avg_precision, summary_writer)
-            self.log_scalar('Avg_recall', avg_recall, summary_writer)
+            self.log_scalar('Avg_precision', avg_precision, summary_writer, name='Statistics')
+            self.log_scalar('Avg_recall', avg_recall, summary_writer, name='Statistics')
         tf.logging.info('Avg_precision: %.4f, avg_recall: %.4f, time: %.2f' % (avg_precision, avg_recall, t_f))

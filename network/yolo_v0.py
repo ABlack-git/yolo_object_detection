@@ -60,7 +60,8 @@ class YoloV0(ANN):
         self.training_set = DatasetGenerator(params.get('training_set_imgs'), params.get('training_set_labels'),
                                              self.img_size, grid_size, 1)
         self.valid_set = None
-        self.test_set = None
+        self.test_set = DatasetGenerator(params.get('testing_set_img'), params.get('testing_set_labels'), self.img_size,
+                                         grid_size, 1)
         self.save_path = params.get('save_path')
         # Model initialization
         self.open_sess()
@@ -547,8 +548,8 @@ class YoloV0(ANN):
 
         return np.asarray(statistics)
 
-    def test_model(self):
-        pass
+    def test_model(self, batch_size):
+        raise NotImplementedError
 
 
 if __name__ == '__main__':

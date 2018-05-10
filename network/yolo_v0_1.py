@@ -191,7 +191,7 @@ class YoloV01(YoloV0):
                 if p > 0.5:
                     x = (p_i % w_cells) * c_width + int(c_width / 2)
                     y = (np.floor(p_i / w_cells)) * c_height + int(c_height / 2)
-                    coords.append([x, y])
+                    coords.append([int(x), int(y)])
         return coords
 
     def print_trainable_variables(self):

@@ -30,11 +30,13 @@ class YoloV0(ANN):
         self.ph_coord_scale = None
         self.ph_noobj_scale = None
         self.ph_isobj_scale = None
+        self.ph_prob_noobj = None
         # Model parameters
         if params is None:
-            params = {'coord_scale': 5,
-                      'noobj_scale': 0.5,
+            params = {'coord_scale': 1,
+                      'noobj_scale': 0.01,
                       'isobj_scale': 1,
+                      'prob_noobj': 0.01,
                       'training_set_imgs': None,
                       'training_set_labels': None,
                       'testing_set_imgs': None,
@@ -52,6 +54,7 @@ class YoloV0(ANN):
         self.coord_scale = params.get('coord_scale')
         self.noobj_scale = params.get('noobj_scale')
         self.isobj_scale = params.get('isobj_scale')
+        self.prob_noobj=params.get('prob_noobj')
         self.batch_size = params.get('batch_size')
         self.learning_rate = params.get('learning_rate')
         self.nms_threshold = params.get('threshold')
@@ -81,6 +84,7 @@ class YoloV0(ANN):
         self.ph_coord_scale = tf.placeholder(tf.float32, shape=(), name='coord_scale')
         self.ph_noobj_scale = tf.placeholder(tf.float32, shape=(), name='noobj_scale')
         self.ph_isobj_scale = tf.placeholder(tf.float32, shape=(), name='isobj_scale')
+        self.ph_prob_noobj = tf.placeholder(tf.float32, shape=(), name='prob_noobj')
         self.ph_train = tf.placeholder(tf.bool, name='training')
         self.inference(self.x)
         self.loss_func(self.predictions, self.y_true)
@@ -91,8 +95,8 @@ class YoloV0(ANN):
     def loss_func(self, y_pred, y_true):
         if not self.loss:
             with tf.name_scope('Loss_function'):
-                y_pred = tf.reshape(y_pred, [-1, self.grid_size[0] * self.grid_size[1], 5], name='reshape_pred')
-                y_true = tf.reshape(y_true, [-1, self.grid_size[0] * self.grid_size[1], 5], name='reshape_truth')
+                y_pred = tf.reshape(y_pred, [-1, self.grid_size[0] * self.grid_size[1], 6], name='reshape_pred')
+                y_true = tf.reshape(y_true, [-1, self.grid_size[0] * self.grid_size[1], 6], name='reshape_truth')
                 # define name scopes
                 with tf.variable_scope('is_obj'):
                     is_obj = y_true[:, :, 4]
@@ -114,6 +118,8 @@ class YoloV0(ANN):
                     p_h = y_pred[:, :, 3]
                 with tf.variable_scope('p_c'):
                     p_c = y_pred[:, :, 4]
+                with tf.variable_scope('p_prob'):
+                    p_prob = y_pred[:, :, 5]
 
                 with tf.name_scope('XY_LOSS'):
                     xy_loss = self.ph_coord_scale * tf.reduce_sum(
@@ -126,21 +132,27 @@ class YoloV0(ANN):
                 iou = self.tf_iou(y_true, y_pred)
                 tf.stop_gradient(iou)
                 self.summary_list.append(tf.summary.histogram('IOU', iou))
-                with tf.name_scope('Confidence'):
-                    confidence = tf.multiply(is_obj, iou, name='confidence')
-                    tf.stop_gradient(confidence)
-                    with tf.variable_scope('no_obj'):
-                        no_obj = tf.to_float(tf.not_equal(is_obj, 1))
-                    # add confidence where object is present
-                    with tf.variable_scope('obj_loss'):
-                        c_obj_loss = self.ph_isobj_scale * tf.reduce_sum(
-                            tf.multiply(is_obj, tf.pow(p_c - confidence, 2)), name='c_obj_loss')
-                    # add confidence where object is not present
-                    with tf.variable_scope('noobj_loss'):
-                        c_noobj_loss = self.ph_noobj_scale * tf.reduce_sum(tf.multiply(no_obj, tf.pow(p_c - 0, 2)),
-                                                                           name='c_noobj_loss')
+                # with tf.name_scope('Confidence'):
+                # confidence = tf.multiply(is_obj, iou, name='confidence')
+                # tf.stop_gradient(confidence)
+                with tf.variable_scope('no_obj'):
+                    no_obj = tf.to_float(tf.not_equal(is_obj, 1))
+                # add confidence where object is present
+                with tf.variable_scope('obj_loss'):
+                    c_obj_loss = self.ph_isobj_scale * tf.reduce_sum(
+                        tf.multiply(is_obj, tf.pow(p_c - iou, 2)), name='c_obj_loss')
+                # add confidence where object is not present
+                with tf.variable_scope('noobj_loss'):
+                    c_noobj_loss = self.ph_noobj_scale * tf.reduce_sum(tf.multiply(no_obj, tf.pow(p_c - iou, 2)),
+                                                                       name='c_noobj_loss')
+                with tf.variable_scope('prob_obj_loss'):
+                    prob_obj_loss = tf.reduce_sum(tf.multiply(is_obj, tf.pow(p_prob - is_obj)), name='prob_obj_loss')
+                with tf.variable_scope('prob_noobj_loss'):
+                    prob_noobj_loss = tf.reduce_sum(tf.multiply(no_obj, tf.pow(p_prob - is_obj)), name='prob_obj_loss')
                 with tf.variable_scope('Loss'):
-                    self.loss = tf.add(xy_loss + wh_loss, c_obj_loss + c_noobj_loss, name='loss')
+                    self.loss = tf.add_n([xy_loss, wh_loss, c_obj_loss, c_noobj_loss, prob_obj_loss, prob_noobj_loss],
+                                         name='loss')
+                    # self.loss = tf.add(xy_loss + wh_loss, c_obj_loss + c_noobj_loss, name='loss')
 
                 self.summary_list.append(tf.summary.scalar('xy_loss', xy_loss))
                 self.summary_list.append(tf.summary.scalar('wh_loss', wh_loss))
@@ -149,7 +161,7 @@ class YoloV0(ANN):
                 self.summary_list.append(tf.summary.scalar('Loss', self.loss))
                 self.summary_list.append(tf.summary.histogram('is_obj', is_obj))
                 self.summary_list.append(tf.summary.histogram('no_obj', no_obj))
-                self.summary_list.append(tf.summary.histogram('confidance', confidence))
+                # self.summary_list.append(tf.summary.histogram('confidance', confidence))
 
     def inference(self, x):
         if not self.predictions:
@@ -184,7 +196,7 @@ class YoloV0(ANN):
                                               pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True)
             # 3x2 is size of a feature map in last conv layer
             flatten = tf.reshape(conv8, [-1, 3 * 2 * 256])
-            out_dim = self.grid_size[0] * self.grid_size[1] * 5 * self.no_boxes
+            out_dim = self.grid_size[0] * self.grid_size[1] * 6 * self.no_boxes
             in_dim = 3 * 2 * 256
             self.predictions = super().create_fc_layer(flatten, [in_dim, out_dim], 'FC_1', activation=False,
                                                        act_param={'type': 'sigmoid', 'write_summary': False},
@@ -240,7 +252,8 @@ class YoloV0(ANN):
                                                           self.ph_coord_scale: self.coord_scale,
                                                           self.ph_noobj_scale: self.noobj_scale,
                                                           self.ph_train: False,
-                                                          self.ph_isobj_scale: self.isobj_scale})
+                                                          self.ph_isobj_scale: self.isobj_scale,
+                                                          self.ph_prob_noobj: self.prob_noobj})
                     summary_writer.add_summary(s, tf.train.global_step(self.sess, self.global_step))
                     summary_writer.flush()
                     loss, preds = self.sess.run([self.loss, self.predictions],
@@ -249,7 +262,8 @@ class YoloV0(ANN):
                                                            self.ph_coord_scale: self.coord_scale,
                                                            self.ph_noobj_scale: self.noobj_scale,
                                                            self.ph_train: False,
-                                                           self.ph_isobj_scale: self.isobj_scale})
+                                                           self.ph_isobj_scale: self.isobj_scale,
+                                                           self.ph_prob_noobj: self.prob_noobj})
                     print(np.asarray(preds, np.float32))
                     b_preds = self.predictions_to_boxes(preds)
                     b_true = self.predictions_to_boxes(labels)
@@ -287,7 +301,8 @@ class YoloV0(ANN):
                                          self.ph_coord_scale: self.coord_scale,
                                          self.ph_noobj_scale: self.noobj_scale,
                                          self.ph_train: True,
-                                         self.ph_isobj_scale: self.isobj_scale})
+                                         self.ph_isobj_scale: self.isobj_scale,
+                                         self.ph_prob_noobj: self.prob_noobj})
                 t_f = time.time() - t_0
                 tf.logging.info('Global step: %s, Batch processed: %d/%d, Time to process batch: %.2f' % (
                     tf.train.global_step(self.sess, self.global_step), i + 1, no_batches, t_f))
@@ -373,7 +388,7 @@ class YoloV0(ANN):
         :return: Returns ALL boxes predicted by the network. Boxes coordinates corespond to pixels.
         Shape of returned tensor is [batch_size, S*S, 5]
         """
-        preds = np.reshape(preds, [self.batch_size, self.grid_size[0] * self.grid_size[1], 5])
+        preds = np.reshape(preds, [self.batch_size, self.grid_size[0] * self.grid_size[1], 6])
         counter_i = 0
         counter_j = 0
         for i in range(self.grid_size[0] * self.grid_size[1]):

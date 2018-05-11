@@ -269,7 +269,7 @@ class YoloV0(ANN):
                                                            self.ph_prob_noobj: self.prob_noobj})
                     print(np.asarray(preds, np.float32))
                     b_preds = self.predictions_to_boxes(preds)
-                    b_true = self.predictions_to_boxes(labels)
+                    b_true = self.predictions_to_boxes(labels, num=5)
                     b_true = self.convert_coords(b_true)
                     tmp = []
                     for b_img in b_true:
@@ -384,14 +384,14 @@ class YoloV0(ANN):
             raise TypeError
         return self.sess.run(self.predictions, feed_dict={self.x: x, self.ph_train: False})
 
-    def predictions_to_boxes(self, preds):
+    def predictions_to_boxes(self, preds, num=6):
         """
         Coverts predictions of network to bounding box format.
         :param preds: Predictions of the network. Shape [batch_size,S*S*5].
         :return: Returns ALL boxes predicted by the network. Boxes coordinates corespond to pixels.
         Shape of returned tensor is [batch_size, S*S, 5]
         """
-        preds = np.reshape(preds, [self.batch_size, self.grid_size[0] * self.grid_size[1], 6])
+        preds = np.reshape(preds, [self.batch_size, self.grid_size[0] * self.grid_size[1], num])
         counter_i = 0
         counter_j = 0
         for i in range(self.grid_size[0] * self.grid_size[1]):

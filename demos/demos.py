@@ -20,7 +20,7 @@ def pretrained_model_test():
         preds = net.get_predictions([img])
         coords = net.predictions_to_cells(preds)
         utils.draw_centers(img, coords)
-        utils.draw_grid(grid_size)
+        utils.draw_grid(img,grid_size)
         cv2.imshow('Network test', img)
         k = cv2.waitKey(0)
 

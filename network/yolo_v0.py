@@ -158,6 +158,8 @@ class YoloV0(ANN):
                 self.summary_list.append(tf.summary.scalar('wh_loss', wh_loss))
                 self.summary_list.append(tf.summary.scalar('c_obj_loss', c_obj_loss))
                 self.summary_list.append(tf.summary.scalar('c_noobj_loss', c_noobj_loss))
+                self.summary_list.append(tf.summary.scalar('prob_obj_loss', prob_obj_loss))
+                self.summary_list.append(tf.summary.scalar('prob_noobj_loss', prob_noobj_loss))
                 self.summary_list.append(tf.summary.scalar('Loss', self.loss))
                 self.summary_list.append(tf.summary.histogram('is_obj', is_obj))
                 self.summary_list.append(tf.summary.histogram('no_obj', no_obj))

@@ -493,7 +493,7 @@ class YoloV0(ANN):
             if meta is not None:
                 self.saver = tf.train.import_meta_graph(meta)
                 self.saver.restore(self.sess, save_path=path)
-            elif var_names is not None:
+            elif path is not None:
                 self.__create_network(self.params)
                 if var_names is not None:
                     graph = tf.get_default_graph()

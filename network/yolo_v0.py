@@ -96,7 +96,7 @@ class YoloV0(ANN):
         if not self.loss:
             with tf.name_scope('Loss_function'):
                 y_pred = tf.reshape(y_pred, [-1, self.grid_size[0] * self.grid_size[1], 6], name='reshape_pred')
-                y_true = tf.reshape(y_true, [-1, self.grid_size[0] * self.grid_size[1], 6], name='reshape_truth')
+                y_true = tf.reshape(y_true, [-1, self.grid_size[0] * self.grid_size[1], 5], name='reshape_truth')
                 # define name scopes
                 with tf.variable_scope('is_obj'):
                     is_obj = y_true[:, :, 4]

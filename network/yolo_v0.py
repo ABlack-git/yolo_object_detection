@@ -167,7 +167,7 @@ class YoloV0(ANN):
 
     def inference(self, x):
         if not self.predictions:
-            act_param = {'type': 'leaky', 'param': 0.1, 'write_summary': False}
+            act_param = {'type': 'leaky', 'param': 0.1, 'write_summary': True}
             conv1 = super().create_conv_layer(x, [3, 3, 3, 16], 'Conv_1', [1, 1, 1, 1], activation=True, pooling=True,
                                               act_param=act_param, weight_init='Xavier', batch_norm=True,
                                               trainable=False)
@@ -182,7 +182,7 @@ class YoloV0(ANN):
 
             conv4 = super().create_conv_layer(conv3, [3, 3, 64, 128], 'Conv_4', [1, 1, 1, 1], activation=True,
                                               pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True,
-                                              trainable=False)
+                                              trainable=True)
 
             conv5 = super().create_conv_layer(conv4, [3, 3, 128, 256], 'Conv_5', [1, 1, 1, 1], activation=True,
                                               pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True,
@@ -203,7 +203,7 @@ class YoloV0(ANN):
             self.predictions = super().create_fc_layer(flatten, [in_dim, out_dim], 'FC_1', activation=False,
                                                        act_param={'type': 'sigmoid', 'write_summary': False},
                                                        weight_init='Xavier',
-                                                       batch_norm=True)
+                                                       batch_norm=False)
 
     def _optimizer(self, optimizer='Adam', param=None, write_grads=True):
         if not self.optimizer:

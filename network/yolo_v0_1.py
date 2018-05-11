@@ -196,5 +196,5 @@ class YoloV01(YoloV0):
         return coords
 
     def print_trainable_variables(self):
-        for var in tf.trainable_variables:
+        for var in tf.trainable_variables():
             print(var)

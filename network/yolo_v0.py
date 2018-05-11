@@ -43,7 +43,7 @@ class YoloV0(ANN):
                       'learning_rate': 0.01,
                       'optimizer': 'SGD',
                       'opt_para': None,
-                      'threshold': 0.5,
+                      'threshold': 0.3,
                       'save_path': 'CheckPoints'}
         self.restored = False
         self.no_boxes = 1

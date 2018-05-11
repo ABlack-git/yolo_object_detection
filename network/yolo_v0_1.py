@@ -6,6 +6,7 @@ import time
 import numpy as np
 import cv2
 
+
 class YoloV01(YoloV0):
 
     def __init__(self, grid_size, img_size, params, restore=False):
@@ -188,7 +189,7 @@ class YoloV01(YoloV0):
         coords = []
         for batch in preds:
             for p_i, p in enumerate(batch):
-                if p > 0.5:
+                if p > self.nms_threshold:
                     x = (p_i % w_cells) * c_width + int(c_width / 2)
                     y = (np.floor(p_i / w_cells)) * c_height + int(c_height / 2)
                     coords.append([int(x), int(y)])

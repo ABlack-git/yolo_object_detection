@@ -496,7 +496,8 @@ class YoloV0(ANN):
             elif var_names is not None:
                 self.__create_network(self.params)
                 graph = tf.get_default_graph()
-                variables = [graph.get_tensor_by_name(name=name + ':0') for name in var_names]
+                if var_names is not None:
+                    variables = [graph.get_tensor_by_name(name=name + ':0') for name in var_names]
                 saver = tf.train.Saver(var_list=variables)
                 saver.restore(self.sess, save_path=path)
             else:

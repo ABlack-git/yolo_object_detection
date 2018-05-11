@@ -54,7 +54,7 @@ class YoloV0(ANN):
         self.coord_scale = params.get('coord_scale')
         self.noobj_scale = params.get('noobj_scale')
         self.isobj_scale = params.get('isobj_scale')
-        self.prob_noobj=params.get('prob_noobj')
+        self.prob_noobj = params.get('prob_noobj')
         self.batch_size = params.get('batch_size')
         self.learning_rate = params.get('learning_rate')
         self.nms_threshold = params.get('threshold')
@@ -146,9 +146,10 @@ class YoloV0(ANN):
                     c_noobj_loss = self.ph_noobj_scale * tf.reduce_sum(tf.multiply(no_obj, tf.pow(p_c - iou, 2)),
                                                                        name='c_noobj_loss')
                 with tf.variable_scope('prob_obj_loss'):
-                    prob_obj_loss = tf.reduce_sum(tf.multiply(is_obj, tf.pow(p_prob - is_obj)), name='prob_obj_loss')
+                    prob_obj_loss = tf.reduce_sum(tf.multiply(is_obj, tf.pow(p_prob - is_obj, 2)), name='prob_obj_loss')
                 with tf.variable_scope('prob_noobj_loss'):
-                    prob_noobj_loss = tf.reduce_sum(tf.multiply(no_obj, tf.pow(p_prob - is_obj)), name='prob_obj_loss')
+                    prob_noobj_loss = tf.reduce_sum(tf.multiply(no_obj, tf.pow(p_prob - is_obj, 2)),
+                                                    name='prob_obj_loss')
                 with tf.variable_scope('Loss'):
                     self.loss = tf.add_n([xy_loss, wh_loss, c_obj_loss, c_noobj_loss, prob_obj_loss, prob_noobj_loss],
                                          name='loss')

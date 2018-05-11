@@ -459,14 +459,15 @@ class YoloV0(ANN):
         self.saver.save(self.sess, os.path.join(path, name),
                         global_step=tf.train.global_step(self.sess, self.global_step))
 
-    def restore(self, path, meta=None, var_list=None):
+    def restore(self, path, meta=None, var_names=None):
         if not self.restored:
             if meta is not None:
                 self.saver = tf.train.import_meta_graph(meta)
                 self.saver.restore(self.sess, save_path=path)
-            elif var_list is not None:
+            elif var_names is not None:
                 self.__create_network(self.params)
-                saver = tf.train.Saver(var_list)
+                variables = [tf.get_variable(name=name) for name in var_names]
+                saver = tf.train.Saver(variables)
                 saver.restore(self.sess, save_path=path)
             else:
                 tf.logging.info('Restore pass was not specified, exiting.')

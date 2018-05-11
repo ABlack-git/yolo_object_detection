@@ -175,15 +175,15 @@ class YoloV0(ANN):
             act_param = {'type': 'leaky', 'param': 0.1, 'write_summary': True}
             conv1 = super().create_conv_layer(x, [3, 3, 3, 16], 'Conv_1', [1, 1, 1, 1], activation=True, pooling=True,
                                               act_param=act_param, weight_init='Xavier', batch_norm=True,
-                                              trainable=False)
+                                              trainable=True)
 
             conv2 = super().create_conv_layer(conv1, [3, 3, 16, 32], 'Conv_2', [1, 1, 1, 1], activation=True,
                                               pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True,
-                                              trainable=False)
+                                              trainable=True)
 
             conv3 = super().create_conv_layer(conv2, [3, 3, 32, 64], 'Conv_3', [1, 1, 1, 1], activation=True,
                                               pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True,
-                                              trainable=False)
+                                              trainable=True)
 
             conv4 = super().create_conv_layer(conv3, [3, 3, 64, 128], 'Conv_4', [1, 1, 1, 1], activation=True,
                                               pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True,

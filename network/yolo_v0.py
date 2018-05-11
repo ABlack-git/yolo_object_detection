@@ -172,7 +172,7 @@ class YoloV0(ANN):
 
             conv5 = super().create_conv_layer(conv4, [3, 3, 128, 256], 'Conv_5', [1, 1, 1, 1], activation=True,
                                               pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True,
-                                              trainable=False)
+                                              trainable=True)
 
             conv6 = super().create_conv_layer(conv5, [3, 3, 256, 512], 'Conv_6', [1, 1, 1, 1], activation=True,
                                               pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True)
@@ -186,7 +186,7 @@ class YoloV0(ANN):
             flatten = tf.reshape(conv8, [-1, 3 * 2 * 256])
             out_dim = self.grid_size[0] * self.grid_size[1] * 5 * self.no_boxes
             in_dim = 3 * 2 * 256
-            self.predictions = super().create_fc_layer(flatten, [in_dim, out_dim], 'FC_1', activation=True,
+            self.predictions = super().create_fc_layer(flatten, [in_dim, out_dim], 'FC_1', activation=False,
                                                        act_param={'type': 'sigmoid', 'write_summary': False},
                                                        weight_init='Xavier',
                                                        batch_norm=True)

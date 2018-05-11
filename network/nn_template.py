@@ -28,7 +28,7 @@ class ANN:
         raise NotImplementedError
 
     def create_conv_layer(self, x, w_shape, name, strides=None, activation=True, pooling=True, act_param=None,
-                          pool_param=None, weight_init='Normal', batch_norm=True
+                          pool_param=None, weight_init='Normal', batch_norm=True, trainable=True
                           ):
 
         """
@@ -70,13 +70,14 @@ class ANN:
                 tf.logging.info('Using Xavier init for %s layer' % name)
             else:
                 weights = tf.truncated_normal(w_shape, stddev=0.1)
-            w = tf.Variable(weights, name='weights')
+            w = tf.Variable(weights, name='weights', trainable=trainable)
             conv = tf.nn.conv2d(x, w, strides=strides, padding='SAME', data_format='NHWC')
             self.summary_list.append(tf.summary.histogram('weights', w))
             if batch_norm:
-                out = tf.layers.batch_normalization(conv, training=self.ph_train, name='batch_norm_layer')
+                out = tf.layers.batch_normalization(conv, training=self.ph_train, name='batch_norm_layer',
+                                                    trainable=trainable)
             else:
-                b = tf.Variable(tf.constant(0.1, shape=[w_shape[3]]), name='biases')
+                b = tf.Variable(tf.constant(0.1, shape=[w_shape[3]]), name='biases', trainable=trainable)
                 self.summary_list.append(tf.summary.histogram('biases', b))
                 out = tf.add(conv, b, name='conv_and_bias')
             if activation:
@@ -99,7 +100,7 @@ class ANN:
         return out
 
     def create_fc_layer(self, x, shape, name, activation=True, dropout=False, act_param=None, dropout_param=None,
-                        weight_init='Normal', batch_norm=True):
+                        weight_init='Normal', batch_norm=True, trainable=True):
         """
          This function will create fully connected layer with activation function and dropout under same
          tensorflow name scope.
@@ -129,12 +130,13 @@ class ANN:
                 tf.logging.info('Using Xavier init for %s layer' % name)
             else:
                 weights = tf.truncated_normal(shape, stddev=0.1)
-            w = tf.Variable(weights, name="weights")
+            w = tf.Variable(weights, name="weights", trainable=trainable)
             self.summary_list.append(tf.summary.histogram("weights", w))
             if batch_norm:
-                out = tf.layers.batch_normalization(tf.matmul(x, w), training=self.ph_train, name='Batch_norm_layer')
+                out = tf.layers.batch_normalization(tf.matmul(x, w), training=self.ph_train, name='Batch_norm_layer',
+                                                    trainable=trainable)
             else:
-                b = tf.Variable(tf.constant(0.1, shape=[shape[1]]), name="biases")
+                b = tf.Variable(tf.constant(0.1, shape=[shape[1]]), name="biases", trainable=trainable)
                 self.summary_list.append(tf.summary.histogram("biases", b))
                 out = tf.add(tf.matmul(x, w), b, name='weighted_sum')
             if activation:

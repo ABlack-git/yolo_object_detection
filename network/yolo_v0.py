@@ -155,19 +155,24 @@ class YoloV0(ANN):
         if not self.predictions:
             act_param = {'type': 'leaky', 'param': 0.1, 'write_summary': False}
             conv1 = super().create_conv_layer(x, [3, 3, 3, 16], 'Conv_1', [1, 1, 1, 1], activation=True, pooling=True,
-                                              act_param=act_param, weight_init='Xavier', batch_norm=True)
+                                              act_param=act_param, weight_init='Xavier', batch_norm=True,
+                                              trainable=False)
 
             conv2 = super().create_conv_layer(conv1, [3, 3, 16, 32], 'Conv_2', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True)
+                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True,
+                                              trainable=False)
 
             conv3 = super().create_conv_layer(conv2, [3, 3, 32, 64], 'Conv_3', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True)
+                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True,
+                                              trainable=False)
 
             conv4 = super().create_conv_layer(conv3, [3, 3, 64, 128], 'Conv_4', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True)
+                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True,
+                                              trainable=False)
 
             conv5 = super().create_conv_layer(conv4, [3, 3, 128, 256], 'Conv_5', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True)
+                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True,
+                                              trainable=False)
 
             conv6 = super().create_conv_layer(conv5, [3, 3, 256, 512], 'Conv_6', [1, 1, 1, 1], activation=True,
                                               pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True)
@@ -272,7 +277,7 @@ class YoloV0(ANN):
                         'avg_iou: %.3f, Valiadation time: %.2f'
                         % (tf.train.global_step(self.sess, self.global_step), loss, no_tp, avg_prec, avg_recall,
                            avg_conf, avg_iou, val_tf))
-                if (i+1) % 200 == 0:
+                if (i + 1) % 200 == 0:
                     self.test_model(self.batch_size)
                 # if i == int(self.training_set.get_number_of_batches(self.batch_size) / 2):
                 #     self.save(self.save_path, 'model')
@@ -560,7 +565,7 @@ class YoloV0(ANN):
         return np.asarray(statistics)
 
     def test_model(self, batch_size):
-       pass
+        pass
 
 
 if __name__ == '__main__':

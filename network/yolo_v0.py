@@ -272,9 +272,8 @@ class YoloV0(ANN):
                         'avg_iou: %.3f, Valiadation time: %.2f'
                         % (tf.train.global_step(self.sess, self.global_step), loss, no_tp, avg_prec, avg_recall,
                            avg_conf, avg_iou, val_tf))
-                if i % 200 == 0:
-                    self.test_model()
-
+                if (i+1) % 200 == 0:
+                    self.test_model(self.batch_size)
                 # if i == int(self.training_set.get_number_of_batches(self.batch_size) / 2):
                 #     self.save(self.save_path, 'model')
 
@@ -561,7 +560,7 @@ class YoloV0(ANN):
         return np.asarray(statistics)
 
     def test_model(self, batch_size):
-        raise NotImplementedError
+       pass
 
 
 if __name__ == '__main__':

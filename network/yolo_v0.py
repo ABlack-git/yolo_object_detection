@@ -31,12 +31,14 @@ class YoloV0(ANN):
         self.ph_noobj_scale = None
         self.ph_isobj_scale = None
         self.ph_prob_noobj = None
+        self.ph_prob_isobj = None
         # Model parameters
         if params is None:
             params = {'coord_scale': 1,
                       'noobj_scale': 0.01,
                       'isobj_scale': 1,
                       'prob_noobj': 0.01,
+                      'prob_isobj': 0.01,
                       'training_set_imgs': None,
                       'training_set_labels': None,
                       'testing_set_imgs': None,
@@ -55,6 +57,7 @@ class YoloV0(ANN):
         self.noobj_scale = params.get('noobj_scale')
         self.isobj_scale = params.get('isobj_scale')
         self.prob_noobj = params.get('prob_noobj')
+        self.prob_isobj = params.get('prob_isobj')
         self.batch_size = params.get('batch_size')
         self.learning_rate = params.get('learning_rate')
         self.nms_threshold = params.get('threshold')
@@ -85,6 +88,7 @@ class YoloV0(ANN):
         self.ph_noobj_scale = tf.placeholder(tf.float32, shape=(), name='noobj_scale')
         self.ph_isobj_scale = tf.placeholder(tf.float32, shape=(), name='isobj_scale')
         self.ph_prob_noobj = tf.placeholder(tf.float32, shape=(), name='prob_noobj')
+        self.ph_prob_isobj = tf.placeholder(tf.float32, shape=(), name='prob_noobj')
         self.ph_train = tf.placeholder(tf.bool, name='training')
         self.inference(self.x)
         self.loss_func(self.predictions, self.y_true)
@@ -256,7 +260,8 @@ class YoloV0(ANN):
                                                           self.ph_noobj_scale: self.noobj_scale,
                                                           self.ph_train: False,
                                                           self.ph_isobj_scale: self.isobj_scale,
-                                                          self.ph_prob_noobj: self.prob_noobj})
+                                                          self.ph_prob_noobj: self.prob_noobj,
+                                                          self.ph_prob_isobj: self.prob_isobj})
                     summary_writer.add_summary(s, tf.train.global_step(self.sess, self.global_step))
                     summary_writer.flush()
                     loss, preds = self.sess.run([self.loss, self.predictions],
@@ -266,7 +271,8 @@ class YoloV0(ANN):
                                                            self.ph_noobj_scale: self.noobj_scale,
                                                            self.ph_train: False,
                                                            self.ph_isobj_scale: self.isobj_scale,
-                                                           self.ph_prob_noobj: self.prob_noobj})
+                                                           self.ph_prob_noobj: self.prob_noobj,
+                                                           self.ph_prob_isobj: self.prob_isobj})
                     print(np.asarray(preds, np.float32))
                     b_preds = self.predictions_to_boxes(preds)
                     b_true = self.predictions_to_boxes(labels, num=5)
@@ -305,7 +311,8 @@ class YoloV0(ANN):
                                          self.ph_noobj_scale: self.noobj_scale,
                                          self.ph_train: True,
                                          self.ph_isobj_scale: self.isobj_scale,
-                                         self.ph_prob_noobj: self.prob_noobj})
+                                         self.ph_prob_noobj: self.prob_noobj,
+                                         self.ph_prob_isobj: self.prob_isobj})
                 t_f = time.time() - t_0
                 tf.logging.info('Global step: %s, Batch processed: %d/%d, Time to process batch: %.2f' % (
                     tf.train.global_step(self.sess, self.global_step), i + 1, no_batches, t_f))

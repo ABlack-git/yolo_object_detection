@@ -13,7 +13,7 @@ class YoloV01(YoloV0):
         super(YoloV01, self).__init__(grid_size, img_size, params, restore=restore)
 
     def inference(self, x):
-        act_param = {'type': 'leaky', 'param': 0.1, 'write_summary': False}
+        act_param = {'type': 'leaky', 'param': 0.1, 'write_summary': True}
         conv1 = super().create_conv_layer(x, [3, 3, 3, 16], 'Conv_1', [1, 1, 1, 1], activation=True, pooling=True,
                                           act_param=act_param, weight_init='Xavier', batch_norm=True)
 
@@ -41,7 +41,7 @@ class YoloV01(YoloV0):
         in_dim = 3 * 2 * 256
         flatten = tf.reshape(conv8, [-1, in_dim])
         out_dim = self.grid_size[0] * self.grid_size[1]
-        self.predictions = super().create_fc_layer(flatten, [in_dim, out_dim], 'FC_1', activation=True,
+        self.predictions = super().create_fc_layer(flatten, [in_dim, out_dim], 'FC_1', activation=False,
                                                    act_param={'type': 'sigmoid', 'write_summary': True},
                                                    weight_init='Xavier',
                                                    batch_norm=False)
@@ -95,6 +95,7 @@ class YoloV01(YoloV0):
                                                            self.ph_train: False,
                                                            self.ph_isobj_scale: self.isobj_scale,
                                                            self.ph_noobj_scale: self.noobj_scale})
+                    print(preds)
                     # Compute statistics
                     precision, recall, no_tp = self.compute_stats(preds, labels)
                     self.log_scalar('Precision', precision, summary_writer, 'Statistics')
@@ -104,7 +105,7 @@ class YoloV01(YoloV0):
                     tf.logging.info('Step: %s, no_tp: %d, loss: %.2f, precision: %.2f, recall: %.2f, time: %.2f' % (
                         tf.train.global_step(self.sess, self.global_step), no_tp, loss, precision, recall, val_tf))
 
-                if g_step % 200 == 0:
+                if g_step % 200 == 0 and False:
                     tf.logging.info('Statistics on testing set at step %s' % g_step)
                     self.test_model(self.batch_size, summary_writer)
 
@@ -145,7 +146,7 @@ class YoloV01(YoloV0):
                 graph = tf.get_default_graph()
                 self.x = graph.get_tensor_by_name('Input:0')
                 self.y_true = graph.get_tensor_by_name('GT_input:0')
-                self.predictions = graph.get_tensor_by_name('FC_1/Sigmoid:0')
+                self.predictions = graph.get_tensor_by_name('FC_1/output:0')
                 self.loss = graph.get_tensor_by_name('Loss_function/total_loss:0')
                 self.optimizer = graph.get_operation_by_name('Optimizer/optimizer')
                 self.global_step = graph.get_tensor_by_name('global_step:0')

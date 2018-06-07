@@ -43,7 +43,7 @@ class YoloV0(ANN):
                       'training_set_labels': None,
                       'testing_set_imgs': None,
                       'testing_set_labels': None,
-                      'batch_size': 1,
+                      'batch_size': 10,
                       'learning_rate': 0.01,
                       'optimizer': 'SGD',
                       'opt_para': None,

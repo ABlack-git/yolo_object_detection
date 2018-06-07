@@ -2,8 +2,10 @@ import tensorflow as tf
 
 
 class ANN:
-    def __init__(self):
+    def __init__(self, cfg):
+        self.cfg = cfg
         self.summary_list = []
+        self.layers_list = {}
         self.predictions = None
         self.loss = None
         self.global_step = None
@@ -12,7 +14,7 @@ class ANN:
         self.ph_train = None
         self.train = True
 
-    def inference(self, x):
+    def init_network(self, x, cfg):
         raise NotImplementedError
 
     def loss_func(self, predictions, labels):
@@ -51,15 +53,11 @@ class ANN:
         if strides is None:
             strides = [1, 1, 1, 1]
 
-        if activation and act_param is None:
-            act_param = {'type': 'ReLU', 'param': None, 'write_summary': True}
-
-        if pooling and pool_param is None:
-            pool_param = {'type': 'max', 'kernel': [1, 2, 2, 1], 'strides': [1, 2, 2, 1], 'padding': 'SAME'}
-
-        # if weight_init != 'Normal':
-        #     tf.logging.warning('Currently weight initialization is supported with normal distribution. '
-        #                        'Continue with Normal distribution')
+        # if activation and act_param is None:
+        #     act_param = {'type': 'ReLU', 'param': None, 'write_summary': True}
+        #
+        # if pooling and pool_param is None:
+        #     pool_param = {'type': 'max', 'kernel': [1, 2, 2, 1], 'strides': [1, 2, 2, 1], 'padding': 'SAME'}
 
         with tf.variable_scope(name):
             if weight_init == 'Normal':
@@ -80,22 +78,22 @@ class ANN:
                 b = tf.Variable(tf.constant(0.1, shape=[w_shape[3]]), name='biases', trainable=trainable)
                 self.summary_list.append(tf.summary.histogram('biases', b))
                 out = tf.add(conv, b, name='conv_and_bias')
-            if activation:
-                if act_param.get('type') == 'ReLU':
-                    act = tf.nn.relu(out, name='ReLu')
-                    if act_param.get('write_summary'):
-                        self.summary_list.append(tf.summary.histogram('ReLU', act))
-                    out = act
-                elif act_param.get('type') == 'leaky':
-                    act = tf.nn.leaky_relu(out, act_param.get('param'), name='Leaky_ReLU')
-                    if act_param.get('write_summary'):
-                        self.summary_list.append(tf.summary.histogram('Leaky_ReLU', act))
-                    out = act
-            if pooling:
-                if pool_param.get('type') == 'max':
-                    out = tf.nn.max_pool(out, pool_param.get('kernel'), pool_param.get('strides'),
-                                         pool_param.get('padding'),
-                                         name='MaxPool')
+            # if activation:
+            #     if act_param.get('type') == 'ReLU':
+            #         act = tf.nn.relu(out, name='ReLu')
+            #         if act_param.get('write_summary'):
+            #             self.summary_list.append(tf.summary.histogram('ReLU', act))
+            #         out = act
+            #     elif act_param.get('type') == 'leaky':
+            #         act = tf.nn.leaky_relu(out, act_param.get('param'), name='Leaky_ReLU')
+            #         if act_param.get('write_summary'):
+            #             self.summary_list.append(tf.summary.histogram('Leaky_ReLU', act))
+            #         out = act
+            # if pooling:
+            #     if pool_param.get('type') == 'max':
+            #         out = tf.nn.max_pool(out, pool_param.get('kernel'), pool_param.get('strides'),
+            #                              pool_param.get('padding'),
+            #                              name='MaxPool')
             out = tf.identity(out, name='output')
         return out
 
@@ -114,13 +112,8 @@ class ANN:
         :param weight_init:
         :return:
         """
-        if activation and act_param is None:
-            act_param = {'type': 'ReLU', 'param': -1, 'write_summary': True}
-
-            # if weight_init != 'Normal':
-            #     tf.logging.warning('Currently weight initialization is supported with normal distribution. '
-            #                        'Continue with Normal distribution')
-            # weight_init = 'Normal'
+        # if activation and act_param is None:
+        #     act_param = {'type': 'ReLU', 'param': -1, 'write_summary': True}
         with tf.variable_scope(name):
             if weight_init == 'Normal':
                 weights = tf.truncated_normal(shape, stddev=0.1)
@@ -130,8 +123,10 @@ class ANN:
                 tf.logging.info('Using Xavier init for %s layer' % name)
             else:
                 weights = tf.truncated_normal(shape, stddev=0.1)
+
             w = tf.Variable(weights, name="weights", trainable=trainable)
             self.summary_list.append(tf.summary.histogram("weights", w))
+
             if batch_norm:
                 out = tf.layers.batch_normalization(tf.matmul(x, w), training=self.ph_train, name='Batch_norm_layer',
                                                     trainable=trainable)
@@ -139,21 +134,21 @@ class ANN:
                 b = tf.Variable(tf.constant(0.1, shape=[shape[1]]), name="biases", trainable=trainable)
                 self.summary_list.append(tf.summary.histogram("biases", b))
                 out = tf.add(tf.matmul(x, w), b, name='weighted_sum')
-            if activation:
-                if act_param.get('type') == 'ReLU':
-                    act = tf.nn.relu(out, name='ReLU')
-                    self.summary_list.append(tf.summary.histogram('ReLU', act))
-                    out = act
-                elif act_param.get('type') == 'leaky':
-                    act = tf.nn.leaky_relu(out, act_param.get('param'), name='Leaky ReLU')
-                    if act_param.get('write_summary'):
-                        self.summary_list.append(tf.summary.histogram('Leaky_ReLU', act))
-                    out = act
-                elif act_param.get('type') == 'sigmoid':
-                    act = tf.sigmoid(out, name='Sigmoid')
-                    if act_param.get('write_summary'):
-                        self.summary_list.append(tf.summary.histogram('Sigmoid', act))
-                    out = act
+            # if activation:
+            #     if act_param.get('type') == 'ReLU':
+            #         act = tf.nn.relu(out, name='ReLU')
+            #         self.summary_list.append(tf.summary.histogram('ReLU', act))
+            #         out = act
+            #     elif act_param.get('type') == 'leaky':
+            #         act = tf.nn.leaky_relu(out, act_param.get('param'), name='Leaky ReLU')
+            #         if act_param.get('write_summary'):
+            #             self.summary_list.append(tf.summary.histogram('Leaky_ReLU', act))
+            #         out = act
+            #     elif act_param.get('type') == 'sigmoid':
+            #         act = tf.sigmoid(out, name='Sigmoid')
+            #         if act_param.get('write_summary'):
+            #             self.summary_list.append(tf.summary.histogram('Sigmoid', act))
+            #         out = act
             if dropout:
                 if dropout_param is not None:
                     out = tf.nn.dropout(out, dropout_param, name='Dropout')
@@ -163,3 +158,29 @@ class ANN:
             out = tf.identity(out, name='output')
             self.summary_list.append(tf.summary.histogram('Output', out))
         return out
+
+    def create_activation_layer(self, x, act_type, params, name, write_summary):
+        with tf.name_scope(name):
+            if act_type == 'ReLU':
+                activation = tf.nn.relu(x, name='relu')
+            elif act_type == 'leaky':
+                if params.get('alpha') is None:
+                    raise ValueError('Parameter alpha is not specified in name scope %s' % name)
+                activation = tf.nn.leaky_relu(x, float(params.get('alpha')), name='leaky_relu')
+            elif act_type == 'sigmoid':
+                activation = tf.sigmoid(x, name='sigmoid')
+            else:
+                raise ValueError('Unknown activation type %s in name scope %s' % (act_type, name))
+            if write_summary:
+                self.summary_list.append(tf.summary.histogram(name, activation))
+            return activation
+
+    def create_pooling_layer(self, x, pool_type, kernel, strides, padding, name, write_summary):
+        with tf.name_scope(name):
+            if pool_type == 'max':
+                pooling = tf.nn.max_pool(x, kernel, strides, padding, name='max_pool')
+            else:
+                raise ValueError('Unknown pooling type %s in name scope %s' % (pool_type, name))
+            if write_summary:
+                self.summary_list.append(tf.summary.histogram(name, pooling))
+            return pooling

@@ -1,20 +1,17 @@
 import tensorflow as tf
 import numpy as np
 from network.nn_template import ANN
+import configparser
 
 
 class YOLO(ANN):
 
-    def __init__(self):
-        super(YOLO, self).__init__()
-        self.predictions = None
-        self.loss = None
-        self.global_step = None
-        self.x = None
-        self.y_true = None
+    def __init__(self, cfg):
+        super(YOLO, self).__init__(cfg)
 
-    def inference(self, x):
-        raise NotImplementedError
+    def init_network(self, x, cfg):
+        pass
+
 
     def loss_func(self, y_pred, y_true):
         raise NotImplementedError
@@ -55,8 +52,6 @@ class YOLO(ANN):
             union = tf.subtract(tf.add(area_1, area_b), intersection, name='Union')
 
         return tf.truediv(intersection, union, name='IoU')
-
-
 
     def nms(self, boxes):
         raise NotImplementedError

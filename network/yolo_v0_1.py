@@ -12,7 +12,7 @@ class YoloV01(YoloV0):
     def __init__(self, grid_size, img_size, params, restore=False):
         super(YoloV01, self).__init__(grid_size, img_size, params, restore=restore)
 
-    def inference(self, x):
+    def init_network(self, x):
         act_param = {'type': 'leaky', 'param': 0.1, 'write_summary': True}
         conv1 = super().create_conv_layer(x, [3, 3, 3, 16], 'Conv_1', [1, 1, 1, 1], activation=True, pooling=True,
                                           act_param=act_param, weight_init='Xavier', batch_norm=True)

@@ -5,6 +5,7 @@ import os
 import datetime
 import numpy as np
 import time
+import configparser
 
 
 class YoloV0(ANN):
@@ -32,7 +33,7 @@ class YoloV0(ANN):
         self.ph_isobj_scale = None
         self.ph_prob_noobj = None
         self.ph_prob_isobj = None
-        # Model parameters
+        # Delete this after cfg is finished
         if params is None:
             params = {'coord_scale': 1,
                       'noobj_scale': 0.01,
@@ -50,9 +51,12 @@ class YoloV0(ANN):
                       'threshold': 0.3,
                       'save_path': 'CheckPoints'}
         self.restored = False
-        self.no_boxes = 1
+        # assign to none after cfg is finished
         self.grid_size = grid_size
         self.img_size = img_size
+        self.summary_path = None
+        self.model_version = None
+        self.epoch_step = None
         self.coord_scale = params.get('coord_scale')
         self.noobj_scale = params.get('noobj_scale')
         self.isobj_scale = params.get('isobj_scale')
@@ -61,6 +65,7 @@ class YoloV0(ANN):
         self.batch_size = params.get('batch_size')
         self.learning_rate = params.get('learning_rate')
         self.nms_threshold = params.get('threshold')
+        self.no_boxes = 1
         # Data sets
         if params.get('training_set_imgs') is not None:
             self.training_set = DatasetGenerator(params.get('training_set_imgs'), params.get('training_set_labels'),
@@ -90,7 +95,7 @@ class YoloV0(ANN):
         self.ph_prob_noobj = tf.placeholder(tf.float32, shape=(), name='prob_noobj')
         self.ph_prob_isobj = tf.placeholder(tf.float32, shape=(), name='prob_noobj')
         self.ph_train = tf.placeholder(tf.bool, name='training')
-        self.inference(self.x)
+        self.init_network(self.x)
         self.loss_func(self.predictions, self.y_true)
         self._optimizer(params.get('optimizer'), params.get('opt_param'), write_grads=False)
         self.sess.run(tf.global_variables_initializer())
@@ -172,7 +177,94 @@ class YoloV0(ANN):
                 self.summary_list.append(tf.summary.histogram('no_obj', no_obj))
                 # self.summary_list.append(tf.summary.histogram('confidance', confidence))
 
-    def inference(self, x):
+    def init_network(self, x, cfg):
+        parser = configparser.ConfigParser()
+        parser.read(cfg)
+        last_out = x
+        for section in parser.sections():
+            if section == 'PARAMETERS':
+                # mandatory parameters
+                self.grid_size = [int(val) for val in parser.get(section, 'grid_size').split(',')]
+                self.img_size = [int(val) for val in parser.get(section, 'img_size').split(',')]
+                self.epoch_step = [int(val) for val in parser.get(section, 'epoch_step').split(',')]
+                self.learning_rate = [float(val) for val in parser.get(section, 'learning_rate').split(',')]
+                self.coord_scale = [float(val) for val in parser.get(section, 'coord_scale').split(',')]
+                self.noobj_scale = [float(val) for val in parser.get(section, 'noobj_scale').split(',')]
+                self.isobj_scale = [float(val) for val in parser.get(section, 'isobj_scale').split(',')]
+                self.prob_noobj = [float(val) for val in parser.get(section, 'prob_noobj').split(',')]
+                self.prob_isobj = [float(val) for val in parser.get(section, 'prob_isobj').split(',')]
+                self.nms_threshold = parser.getfloat(section, 'nms_threshold')
+                self.batch_size = parser.getint(section, 'batch_size')
+                self.summary_path = parser.get(section, 'summary_path')
+                self.model_version = parser.get(section, 'model_version')
+                self.restored = parser.getboolean(section, 'restore')
+                # optional
+                if parser.has_option(section, 'no_boxes'):
+                    self.no_boxes = parser.getint(section, 'no_boxes')
+                else:
+                    self.no_boxes = 1
+
+            elif section.startswith('CONV'):
+                name = section
+                w_shape = [int(val) for val in parser.get(section, 'w_shape').split(',')]
+                batch_norm = parser.getboolean(section, 'batch_norm')
+                weight_init = parser.get(section, 'weight_init')
+                if parser.has_option(section, 'strides'):
+                    strides = [int(val) for val in parser.get(section, 'strides').split(',')]
+                else:
+                    strides = None
+                if parser.has_option(section, 'trainable'):
+                    trainable = parser.getboolean(section, 'trainable')
+                else:
+                    trainable = True
+                self.layers_list[name] = super().create_conv_layer(last_out, w_shape, name, strides=strides,
+                                                                   weight_init=weight_init, batch_norm=batch_norm,
+                                                                   trainable=trainable)
+                last_out = self.layers_list[name]
+            elif section.startswith('ACTIVATION'):
+                name = parser.get(section, 'name')
+                act_type = parser.get(section, 'type')
+                write_summary = parser.getboolean(section, 'write_summary')
+                params = {}
+                for option, value in parser.items(section):
+                    if option != 'name' and option != 'type' and option != 'name':
+                        params[option] = value
+                self.layers_list[name] = super().create_activation_layer(last_out, act_type, params, name,
+                                                                         write_summary)
+                last_out = self.layers_list[name]
+            elif section.startswith('POOLING'):
+                name = parser.get(section, 'name')
+                pool_type = parser.get(section, 'type')
+                kernel_size = []
+                strides = []
+                padding = parser.get(section, 'padding')
+                write_summary = parser.getboolean(section, 'write_summary')
+                self.layers_list[name] = super().create_pooling_layer(last_out, pool_type, kernel_size, strides,
+                                                                      padding, name, write_summary)
+                last_out = self.layers_list[name]
+
+            elif section.startswith('FC'):
+                name = section
+                w_shape = [int(val) for val in parser.get(section, 'w_shape').split(',')]
+                batch_norm = parser.getboolean(section, 'batch_norm')
+                weight_init = parser.get(section, 'weight_init')
+                dropout = parser.getboolean(section, 'dropout')
+                dropout_param = parser.getfloat(section, 'dropout_param')
+                if parser.has_option(section, 'trainable'):
+                    trainable = parser.getboolean(section, 'trainable')
+                else:
+                    trainable = True
+                if parser.has_option(section, 'reshape'):
+                    reshape = parser.getint(section, 'reshape')
+                    last_out = tf.reshape(last_out, [-1, reshape])
+                self.layers_list[name] = super().create_fc_layer(last_out, w_shape, name, dropout=dropout,
+                                                                 dropout_param=dropout_param, weight_init=weight_init,
+                                                                 batch_norm=batch_norm, trainable=trainable)
+                last_out = self.layers_list[name]
+            else:
+                raise ValueError('Unknown section %s in the configuration file' % section)
+
+    def init_network(self, x):
         if not self.predictions:
             act_param = {'type': 'leaky', 'param': 0.1, 'write_summary': True}
             conv1 = super().create_conv_layer(x, [3, 3, 3, 16], 'Conv_1', [1, 1, 1, 1], activation=True, pooling=True,

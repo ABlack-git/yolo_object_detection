@@ -10,19 +10,11 @@ import configparser
 
 class YoloV0(ANN):
 
-    def __init__(self, grid_size, img_size, params=None, restore=False):
-        """
-        :param grid_size: Size of grid
-        :param img_size: Size of input image
-        :param params: loss_scale, training_set_imgs, training_set_labels, batch_size, learning_rate, optimizer,
-        threshold
-        :param restore: Boolean. True if model should be restored from saved parameters. False if new model should be
-        created
-        """
-        self.params = params
+    def __init__(self, cfg):
+
         self.set_logger_verbosity()
         # Graph elements and tensorflow functions
-        super(YoloV0, self).__init__()
+        super(YoloV0, self).__init__(cfg)
         self.optimizer = None
         self.sess = None
         self.saver = None
@@ -33,61 +25,34 @@ class YoloV0(ANN):
         self.ph_isobj_scale = None
         self.ph_prob_noobj = None
         self.ph_prob_isobj = None
-        # Delete this after cfg is finished
-        if params is None:
-            params = {'coord_scale': 1,
-                      'noobj_scale': 0.01,
-                      'isobj_scale': 1,
-                      'prob_noobj': 0.01,
-                      'prob_isobj': 0.01,
-                      'training_set_imgs': None,
-                      'training_set_labels': None,
-                      'testing_set_imgs': None,
-                      'testing_set_labels': None,
-                      'batch_size': 10,
-                      'learning_rate': 0.01,
-                      'optimizer': 'SGD',
-                      'opt_para': None,
-                      'threshold': 0.3,
-                      'save_path': 'CheckPoints'}
-        self.restored = False
-        # assign to none after cfg is finished
-        self.grid_size = grid_size
-        self.img_size = img_size
-        self.summary_path = None
-        self.model_version = None
+        # Model parameters
+        self.grid_size = None
+        self.img_size = None
         self.epoch_step = None
-        self.coord_scale = params.get('coord_scale')
-        self.noobj_scale = params.get('noobj_scale')
-        self.isobj_scale = params.get('isobj_scale')
-        self.prob_noobj = params.get('prob_noobj')
-        self.prob_isobj = params.get('prob_isobj')
-        self.batch_size = params.get('batch_size')
-        self.learning_rate = params.get('learning_rate')
-        self.nms_threshold = params.get('threshold')
+        self.coord_scale = None
+        self.noobj_scale = None
+        self.isobj_scale = None
+        self.prob_noobj = None
+        self.prob_isobj = None
+        self.batch_size = None
+        self.learning_rate = None
+        self.nms_threshold = None
         self.no_boxes = 1
-        # Data sets
-        if params.get('training_set_imgs') is not None:
-            self.training_set = DatasetGenerator(params.get('training_set_imgs'), params.get('training_set_labels'),
-                                                 self.img_size, grid_size, 1)
-        self.valid_set = None
-        if params.get('testing_set_imgs') is not None:
-            self.test_set = DatasetGenerator(params.get('testing_set_imgs'), params.get('testing_set_labels'),
-                                             self.img_size,
-                                             grid_size, 1)
-        self.save_path = params.get('save_path')
+        self.optimizer_param = None
+        # strings
+        self.weights_path = ''
+        self.optimizer_type = ''
+        self.model_version = ''
+        self.summary_path = ''
+        # bools
+        self.restored = False
+        self.restore_bool = False
+        self.write_grads = False
         # Model initialization
         self.open_sess()
+        self.__create_network()
 
-        if not restore:
-            self.__create_network(params)
-        else:
-            pass
-
-    def __create_network(self, params):
-        self.global_step = tf.Variable(0, name="global_step", trainable=False)
-        self.x = tf.placeholder(tf.float32, [None, self.img_size[1], self.img_size[0], 3], name='Input')
-        self.y_true = tf.placeholder(tf.float32, [None, self.grid_size[0] * self.grid_size[1] * 5], name='GT_input')
+    def __create_network(self):
         self.ph_learning_rate = tf.placeholder(tf.float32, shape=(), name='learning_rate')
         self.ph_coord_scale = tf.placeholder(tf.float32, shape=(), name='coord_scale')
         self.ph_noobj_scale = tf.placeholder(tf.float32, shape=(), name='noobj_scale')
@@ -95,11 +60,15 @@ class YoloV0(ANN):
         self.ph_prob_noobj = tf.placeholder(tf.float32, shape=(), name='prob_noobj')
         self.ph_prob_isobj = tf.placeholder(tf.float32, shape=(), name='prob_noobj')
         self.ph_train = tf.placeholder(tf.bool, name='training')
-        self.init_network(self.x)
+        self.init_network(self.cfg)
         self.loss_func(self.predictions, self.y_true)
-        self._optimizer(params.get('optimizer'), params.get('opt_param'), write_grads=False)
+        self._optimizer(self.optimizer_type, self.optimizer_param, write_summary=self.write_grads)
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver(max_to_keep=10)
+        if self.restore_bool:
+            self.restore(self.weights_path)
+        else:
+            self.global_step = tf.Variable(0, name="global_step", trainable=False)
 
     def loss_func(self, y_pred, y_true):
         if not self.loss:
@@ -177,15 +146,19 @@ class YoloV0(ANN):
                 self.summary_list.append(tf.summary.histogram('no_obj', no_obj))
                 # self.summary_list.append(tf.summary.histogram('confidance', confidence))
 
-    def init_network(self, x, cfg):
+    def init_network(self, cfg):
         parser = configparser.ConfigParser()
         parser.read(cfg)
-        last_out = x
+        last_out = None
         for section in parser.sections():
             if section == 'PARAMETERS':
                 # mandatory parameters
                 self.grid_size = [int(val) for val in parser.get(section, 'grid_size').split(',')]
                 self.img_size = [int(val) for val in parser.get(section, 'img_size').split(',')]
+                self.x = tf.placeholder(tf.float32, [None, self.img_size[1], self.img_size[0], 3], name='Input')
+                last_out = self.x
+                self.y_true = tf.placeholder(tf.float32, [None, self.grid_size[0] * self.grid_size[1] * 5],
+                                             name='labels')
                 self.epoch_step = [int(val) for val in parser.get(section, 'epoch_step').split(',')]
                 self.learning_rate = [float(val) for val in parser.get(section, 'learning_rate').split(',')]
                 self.coord_scale = [float(val) for val in parser.get(section, 'coord_scale').split(',')]
@@ -197,12 +170,31 @@ class YoloV0(ANN):
                 self.batch_size = parser.getint(section, 'batch_size')
                 self.summary_path = parser.get(section, 'summary_path')
                 self.model_version = parser.get(section, 'model_version')
-                self.restored = parser.getboolean(section, 'restore')
+                self.optimizer_type = parser.get(section, 'optimizer')
                 # optional
                 if parser.has_option(section, 'no_boxes'):
                     self.no_boxes = parser.getint(section, 'no_boxes')
                 else:
                     self.no_boxes = 1
+                if parser.has_option(section, 'optimizer_param'):
+                    self.optimizer_param = parser.getfloat(section, 'optimizer_param')
+
+                if parser.has_option(section, 'restore'):
+                    self.restore_bool = parser.getboolean(section, 'restore')
+                    if self.restore_bool:
+                        if parser.has_option(section, 'weights_path'):
+                            self.weights_path = parser.get(section, 'weights_path')
+                        else:
+                            self.restore_bool = False
+                            tf.logging.warning('Parameter restore was set to true, but path to weights was not '
+                                               'specified. Load model with load function')
+                    else:
+                        self.restore_bool = False
+
+                if parser.has_option(section, 'write_grads'):
+                    self.write_grads = parser.getboolean(section, 'write_grads')
+                else:
+                    self.write_grads = False
 
             elif section.startswith('CONV'):
                 name = section
@@ -235,8 +227,8 @@ class YoloV0(ANN):
             elif section.startswith('POOLING'):
                 name = parser.get(section, 'name')
                 pool_type = parser.get(section, 'type')
-                kernel_size = []
-                strides = []
+                kernel_size = [int(val) for val in parser.get(section, 'kernel_size').split(',')]
+                strides = [int(val) for val in parser.get(section, 'strides').split(',')]
                 padding = parser.get(section, 'padding')
                 write_summary = parser.getboolean(section, 'write_summary')
                 self.layers_list[name] = super().create_pooling_layer(last_out, pool_type, kernel_size, strides,
@@ -249,7 +241,10 @@ class YoloV0(ANN):
                 batch_norm = parser.getboolean(section, 'batch_norm')
                 weight_init = parser.get(section, 'weight_init')
                 dropout = parser.getboolean(section, 'dropout')
-                dropout_param = parser.getfloat(section, 'dropout_param')
+                if parser.has_option(section, 'dropout_param'):
+                    dropout_param = parser.getfloat(section, 'dropout_param')
+                else:
+                    dropout_param = None
                 if parser.has_option(section, 'trainable'):
                     trainable = parser.getboolean(section, 'trainable')
                 else:
@@ -263,48 +258,10 @@ class YoloV0(ANN):
                 last_out = self.layers_list[name]
             else:
                 raise ValueError('Unknown section %s in the configuration file' % section)
+        self.predictions = last_out
+        return self.predictions
 
-    def init_network(self, x):
-        if not self.predictions:
-            act_param = {'type': 'leaky', 'param': 0.1, 'write_summary': True}
-            conv1 = super().create_conv_layer(x, [3, 3, 3, 16], 'Conv_1', [1, 1, 1, 1], activation=True, pooling=True,
-                                              act_param=act_param, weight_init='Xavier', batch_norm=True,
-                                              trainable=True)
-
-            conv2 = super().create_conv_layer(conv1, [3, 3, 16, 32], 'Conv_2', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True,
-                                              trainable=True)
-
-            conv3 = super().create_conv_layer(conv2, [3, 3, 32, 64], 'Conv_3', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True,
-                                              trainable=True)
-
-            conv4 = super().create_conv_layer(conv3, [3, 3, 64, 128], 'Conv_4', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True,
-                                              trainable=True)
-
-            conv5 = super().create_conv_layer(conv4, [3, 3, 128, 256], 'Conv_5', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True,
-                                              trainable=True)
-
-            conv6 = super().create_conv_layer(conv5, [3, 3, 256, 512], 'Conv_6', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True)
-
-            conv7 = super().create_conv_layer(conv6, [3, 3, 512, 1024], 'Conv_7', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True)
-
-            conv8 = super().create_conv_layer(conv7, [3, 3, 1024, 256], 'Conv_8', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True)
-            # 3x2 is size of a feature map in last conv layer
-            flatten = tf.reshape(conv8, [-1, 3 * 2 * 256])
-            out_dim = self.grid_size[0] * self.grid_size[1] * 6 * self.no_boxes
-            in_dim = 3 * 2 * 256
-            self.predictions = super().create_fc_layer(flatten, [in_dim, out_dim], 'FC_1', activation=False,
-                                                       act_param={'type': 'sigmoid', 'write_summary': False},
-                                                       weight_init='Xavier',
-                                                       batch_norm=False)
-
-    def _optimizer(self, optimizer='Adam', param=None, write_grads=True):
+    def _optimizer(self, optimizer='Adam', param=None, write_summary=True):
         if not self.optimizer:
             with tf.name_scope('Optimizer'):
                 if optimizer == 'Adam':
@@ -327,7 +284,7 @@ class YoloV0(ANN):
                 with tf.control_dependencies(update_ops):
                     grads = self.optimizer.compute_gradients(self.loss)
                 self.optimizer = self.optimizer.apply_gradients(grads, global_step=self.global_step, name='optimizer')
-                if write_grads:
+                if write_summary:
                     for i, grad in enumerate(grads):
                         self.summary_list.append(
                             tf.summary.histogram("{}-grad".format(grads[i][1].name.replace(':0', '-0')), grads[i]))
@@ -588,7 +545,7 @@ class YoloV0(ANN):
                 self.saver = tf.train.import_meta_graph(meta)
                 self.saver.restore(self.sess, save_path=path)
             elif path is not None:
-                self.__create_network(self.params)
+                self.__create_network()
                 variables = None
                 if var_names is not None:
                     graph = tf.get_default_graph()
@@ -599,7 +556,6 @@ class YoloV0(ANN):
                 tf.logging.info('Restore pass was not specified, exiting.')
                 exit(1)
             try:
-
                 graph = tf.get_default_graph()
                 self.x = graph.get_tensor_by_name('Input:0')
                 self.y_true = graph.get_tensor_by_name('GT_input:0')
@@ -690,7 +646,6 @@ class YoloV0(ANN):
 
 
 if __name__ == '__main__':
-    img_size = (720, 480)
-    grid_size = (36, 24)
-    net = YoloV0(grid_size, img_size)
+    cfg = '/Users/mac/Documents/Study/IND/yolo_object_detection/cfg/cfg_test.cfg'
+    net = YoloV0(cfg)
     net.close_sess()

@@ -11,7 +11,6 @@ import configparser
 class YoloV0(ANN):
 
     def __init__(self, cfg):
-
         self.set_logger_verbosity()
         # Graph elements and tensorflow functions
         super(YoloV0, self).__init__(cfg)
@@ -40,10 +39,11 @@ class YoloV0(ANN):
         self.no_boxes = 1
         self.optimizer_param = None
         # strings
-        self.weights_path = ''
+        self.load_path = ''
         self.optimizer_type = ''
         self.model_version = ''
         self.summary_path = ''
+        self.save_path = ''
         # bools
         self.restored = False
         self.restore_bool = False
@@ -65,10 +65,9 @@ class YoloV0(ANN):
         self._optimizer(self.optimizer_type, self.optimizer_param, write_summary=self.write_grads)
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver(max_to_keep=10)
+        self.global_step = tf.Variable(0, name="global_step", trainable=False)
         if self.restore_bool:
-            self.restore(self.weights_path)
-        else:
-            self.global_step = tf.Variable(0, name="global_step", trainable=False)
+            self.restore(self.load_path)
 
     def loss_func(self, y_pred, y_true):
         if not self.loss:
@@ -171,6 +170,7 @@ class YoloV0(ANN):
                 self.summary_path = parser.get(section, 'summary_path')
                 self.model_version = parser.get(section, 'model_version')
                 self.optimizer_type = parser.get(section, 'optimizer')
+                self.save_path = parser.get(section, 'save_path')
                 # optional
                 if parser.has_option(section, 'no_boxes'):
                     self.no_boxes = parser.getint(section, 'no_boxes')
@@ -182,8 +182,8 @@ class YoloV0(ANN):
                 if parser.has_option(section, 'restore'):
                     self.restore_bool = parser.getboolean(section, 'restore')
                     if self.restore_bool:
-                        if parser.has_option(section, 'weights_path'):
-                            self.weights_path = parser.get(section, 'weights_path')
+                        if parser.has_option(section, 'load_path'):
+                            self.load_path = parser.get(section, 'load_path')
                         else:
                             self.restore_bool = False
                             tf.logging.warning('Parameter restore was set to true, but path to weights was not '
@@ -216,7 +216,10 @@ class YoloV0(ANN):
             elif section.startswith('ACTIVATION'):
                 name = parser.get(section, 'name')
                 act_type = parser.get(section, 'type')
-                write_summary = parser.getboolean(section, 'write_summary')
+                if parser.has_option(section, 'write_summary'):
+                    write_summary = parser.getboolean(section, 'write_summary')
+                else:
+                    write_summary = False
                 params = {}
                 for option, value in parser.items(section):
                     if option != 'name' and option != 'type' and option != 'name':
@@ -230,7 +233,10 @@ class YoloV0(ANN):
                 kernel_size = [int(val) for val in parser.get(section, 'kernel_size').split(',')]
                 strides = [int(val) for val in parser.get(section, 'strides').split(',')]
                 padding = parser.get(section, 'padding')
-                write_summary = parser.getboolean(section, 'write_summary')
+                if parser.has_option(section, 'write_summary'):
+                    write_summary = parser.getboolean(section, 'write_summary')
+                else:
+                    write_summary = False
                 self.layers_list[name] = super().create_pooling_layer(last_out, pool_type, kernel_size, strides,
                                                                       padding, name, write_summary)
                 last_out = self.layers_list[name]
@@ -289,16 +295,21 @@ class YoloV0(ANN):
                         self.summary_list.append(
                             tf.summary.histogram("{}-grad".format(grads[i][1].name.replace(':0', '-0')), grads[i]))
 
-    def optimize(self, epochs, sum_path):
+    def optimize(self, epochs, training_set, valid_set):
         now = datetime.datetime.now()
+        model_folder = os.path.join(self.summary_path, self.model_version)
         summary_folder = '%d_%d_%d__%d-%d' % (now.day, now.month, now.year, now.hour, now.minute)
-        summary_writer = tf.summary.FileWriter(os.path.join(sum_path, summary_folder), graph=tf.get_default_graph())
+        summary_writer = tf.summary.FileWriter(os.path.join(model_folder, summary_folder), graph=tf.get_default_graph())
         summary = tf.summary.merge_all()
+        ts = DatasetGenerator(training_set[0], training_set[1], self.img_size, self.grid_size, self.no_boxes)
+        save_path = os.path.join(self.save_path, self.model_version)
+        if valid_set is not None:
+            vs = DatasetGenerator(valid_set[0], valid_set[1], self.img_size, self.grid_size, self.no_boxes)
         tf.logging.info(
             'Starting to train model. Current global step is %s' % tf.train.global_step(self.sess, self.global_step))
         for _ in range(epochs):
-            batch = self.training_set.get_minibatch(self.batch_size)
-            no_batches = self.training_set.get_number_of_batches(self.batch_size)
+            batch = ts.get_minibatch(self.batch_size)
+            no_batches = ts.get_number_of_batches(self.batch_size)
             for i in range(no_batches):
                 t_0 = time.time()
                 imgs, labels = next(batch)
@@ -351,10 +362,9 @@ class YoloV0(ANN):
                         'avg_iou: %.3f, Valiadation time: %.2f'
                         % (tf.train.global_step(self.sess, self.global_step), loss, no_tp, avg_prec, avg_recall,
                            avg_conf, avg_iou, val_tf))
+
                 if (i + 1) % 200 == 0:
                     self.test_model(self.batch_size)
-                # if i == int(self.training_set.get_number_of_batches(self.batch_size) / 2):
-                #     self.save(self.save_path, 'model')
 
                 self.sess.run([self.optimizer],
                               feed_dict={self.x: imgs, self.y_true: labels, self.ph_learning_rate: self.learning_rate,
@@ -368,7 +378,7 @@ class YoloV0(ANN):
                 tf.logging.info('Global step: %s, Batch processed: %d/%d, Time to process batch: %.2f' % (
                     tf.train.global_step(self.sess, self.global_step), i + 1, no_batches, t_f))
             # save every epoch
-            self.save(self.save_path, 'model')
+            self.save(save_path, self.model_version)
 
     def tf_iou(self, y_true, y_pred):
         """
@@ -539,6 +549,13 @@ class YoloV0(ANN):
         self.saver.save(self.sess, os.path.join(path, name),
                         global_step=tf.train.global_step(self.sess, self.global_step))
 
+    def graph_summary(self):
+        if not os.path.exists(self.summary_path):
+            os.makedirs(self.summary_path)
+        path = os.path.join(self.summary_path, self.model_version)
+        writer = tf.summary.FileWriter(path, graph=tf.get_default_graph())
+        writer.flush()
+
     def restore(self, path, meta=None, var_names=None):
         if not self.restored:
             if meta is not None:
@@ -646,6 +663,7 @@ class YoloV0(ANN):
 
 
 if __name__ == '__main__':
-    cfg = '/Users/mac/Documents/Study/IND/yolo_object_detection/cfg/cfg_test.cfg'
-    net = YoloV0(cfg)
+    cfg_file = '/Users/mac/Documents/Study/IND/yolo_object_detection/cfg/model_8l_1.cfg'
+    net = YoloV0(cfg_file)
+    net.graph_summary()
     net.close_sess()

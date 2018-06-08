@@ -20,7 +20,7 @@ class ANN:
     def loss_func(self, predictions, labels):
         raise NotImplementedError
 
-    def optimize(self, epochs, summary_folder):
+    def optimize(self, epochs, training_set, valid_set):
         raise NotImplementedError
 
     def save(self, path, name):
@@ -116,7 +116,7 @@ class ANN:
             tf.logging.info('Activation function %s created with parameters: ' % name)
             tf.logging.info('   type: %s' % act_type)
             if params.get('alpha') is not None:
-                tf.logging.info('   alpha: %f' % params.get('alpha'))
+                tf.logging.info('   alpha: %s' % params.get('alpha'))
             tf.logging.info('   write summary: %s' % write_summary)
             return activation
 

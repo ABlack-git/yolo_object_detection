@@ -32,7 +32,8 @@ class YoloSmall(YoloV0):
                                               trainable=True)
 
             conv6 = super().create_conv_layer(conv5, [3, 3, 256, 128], 'Conv_6', [1, 1, 1, 1], activation=True,
-                                              pooling=False, act_param=act_param, weight_init='Xavier', batch_norm=True)
+                                              pooling=False, act_param=act_param, weight_init='Xavier', batch_norm=True, 
+                                              trainable=True)
 
             in_dim = 6 * 4 * 128
             flatten = tf.reshape(conv6, [-1, in_dim])

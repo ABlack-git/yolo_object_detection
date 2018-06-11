@@ -105,7 +105,7 @@ class YoloV01(YoloV0):
                     tf.logging.info('Step: %s, no_tp: %d, loss: %.2f, precision: %.2f, recall: %.2f, time: %.2f' % (
                         tf.train.global_step(self.sess, self.global_step), no_tp, loss, precision, recall, val_tf))
 
-                if g_step % 200 == 0 and False:
+                if g_step % 200 == 0:
                     tf.logging.info('Statistics on testing set at step %s' % g_step)
                     self.test_model(self.batch_size, summary_writer)
 

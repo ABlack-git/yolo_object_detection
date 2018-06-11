@@ -64,8 +64,9 @@ class YoloV0(ANN):
         self.loss_func(self.predictions, self.y_true)
         self._optimizer(self.optimizer_type, self.optimizer_param, write_summary=self.write_grads)
         self.sess.run(tf.global_variables_initializer())
-        self.saver = tf.train.Saver(max_to_keep=10)
         self.global_step = tf.Variable(0, name="global_step", trainable=False)
+        self.saver = tf.train.Saver(max_to_keep=10)
+
         if self.restore_bool:
             self.restore(self.load_path)
 

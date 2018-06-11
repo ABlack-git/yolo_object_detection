@@ -322,7 +322,7 @@ class YoloV0(ANN):
                     if k == len(e_step) - 1:
                         ind = k
 
-                if g_step+1 % int(no_batches / 3) == 0:
+                if g_step + 1 % 50 == 0:
                     val_t0 = time.time()
                     s = self.sess.run(summary, feed_dict={self.x: imgs, self.y_true: labels,
                                                           self.ph_learning_rate: self.learning_rate[ind],
@@ -364,8 +364,8 @@ class YoloV0(ANN):
                     self.log_scalar('t_avg_conf', avg_conf, summary_writer, 'Statistics')
                     self.log_scalar('t_avg_iou', avg_iou, summary_writer, 'Statistics')
                     val_tf = time.time() - val_t0
-                    print('Statistics on training set')
-                    print(
+                    tf.logging.info('Statistics on training set')
+                    tf.logging.info(
                         'Step: %s, loss: %.4f, no_tp: %d, avg_precision: %.3f, avg_recall %.3f, avg_confidance: %.3f, '
                         'avg_iou: %.3f, Valiadation time: %.2f'
                         % (tf.train.global_step(self.sess, self.global_step), loss, no_tp, avg_prec, avg_recall,
@@ -384,8 +384,13 @@ class YoloV0(ANN):
                                          self.ph_prob_noobj: self.prob_noobj[ind],
                                          self.ph_prob_isobj: self.prob_isobj[ind]})
                 t_f = time.time() - t_0
-                tf.logging.info('Global step: %s, Batch processed: %d/%d, Time to process batch: %.2f' % (
-                    tf.train.global_step(self.sess, self.global_step), i + 1, no_batches, t_f))
+                epoch = int(g_step / no_batches)
+                tf.logging.info('Global step: %d, epoch: %d, Batch processed: %d/%d, Time to process batch: %.2f' % (
+                    g_step, epoch, i + 1, no_batches, t_f))
+                tf.logging.info('Learning rate %f, coord scale: %f, noobj scale: %f, is obj scale: %f, prob noobj: %f, '
+                                'prob is obj: %f' % (self.learning_rate[ind], self.coord_scale[ind],
+                                                     self.noobj_scale[ind], self.isobj_scale[ind], self.prob_noobj[ind],
+                                                     self.prob_isobj[ind]))
             # save every epoch
             self.save(save_path, self.model_version)
 

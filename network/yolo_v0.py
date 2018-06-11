@@ -602,7 +602,7 @@ class YoloV0(ANN):
             try:
                 graph = tf.get_default_graph()
                 self.x = graph.get_tensor_by_name('Input:0')
-                self.y_true = graph.get_tensor_by_name('GT_input:0')
+                self.y_true = graph.get_tensor_by_name('labels:0')
                 self.predictions = graph.get_tensor_by_name('FC_1/output:0')
                 self.loss = graph.get_tensor_by_name('Loss_function/Loss/loss:0')
                 self.optimizer = graph.get_operation_by_name('Optimizer/optimizer')

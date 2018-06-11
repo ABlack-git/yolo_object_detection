@@ -321,7 +321,7 @@ class YoloV0(ANN):
                     if k == len(e_step) - 1:
                         ind = k
 
-                if g_step % int(no_batches / 3) == 0:
+                if g_step+1 % int(no_batches / 3) == 0:
                     val_t0 = time.time()
                     s = self.sess.run(summary, feed_dict={self.x: imgs, self.y_true: labels,
                                                           self.ph_learning_rate: self.learning_rate[ind],

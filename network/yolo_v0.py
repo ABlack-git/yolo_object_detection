@@ -162,6 +162,18 @@ class YoloV0(ANN):
                 self.isobj_scale = [float(val) for val in parser.get(section, 'isobj_scale').split(',')]
                 self.prob_noobj = [float(val) for val in parser.get(section, 'prob_noobj').split(',')]
                 self.prob_isobj = [float(val) for val in parser.get(section, 'prob_isobj').split(',')]
+                if len(self.learning_rate) != len(self.epoch_step):
+                    raise ValueError('Length of learning rate array is not equal to epoch step array')
+                if len(self.coord_scale) != len(self.epoch_step):
+                    raise ValueError('Length of coord scale array is not equal to epoch step array')
+                if len(self.noobj_scale) != len(self.epoch_step):
+                    raise ValueError('Length of noobj scale array is not equal to epoch step array')
+                if len(self.isobj_scale) != len(self.epoch_step):
+                    raise ValueError('Length of isobj scale array is not equal to epoch step array')
+                if len(self.prob_noobj) != len(self.epoch_step):
+                    raise ValueError('Length of prob noobj array is not equal to epoch step array')
+                if len(self.prob_isobj) != len(self.epoch_step):
+                    raise ValueError('Length of prob isobj array is not equal to epoch step array')
                 self.nms_threshold = parser.getfloat(section, 'nms_threshold')
                 self.batch_size = parser.getint(section, 'batch_size')
                 self.summary_path = parser.get(section, 'summary_path')

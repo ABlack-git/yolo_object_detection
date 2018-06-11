@@ -588,6 +588,25 @@ class YoloV0(ANN):
             if meta is not None:
                 self.saver = tf.train.import_meta_graph(meta)
                 self.saver.restore(self.sess, save_path=path)
+                try:
+                    graph = tf.get_default_graph()
+                    self.x = graph.get_tensor_by_name('Input:0')
+                    self.y_true = graph.get_tensor_by_name('labels:0')
+                    self.predictions = graph.get_tensor_by_name('FC_1/output:0')
+                    self.loss = graph.get_tensor_by_name('Loss_function/Loss/loss:0')
+                    self.optimizer = graph.get_operation_by_name('Optimizer/optimizer')
+                    self.global_step = graph.get_tensor_by_name('global_step:0')
+                    self.ph_train = graph.get_tensor_by_name('training:0')
+                    self.ph_learning_rate = graph.get_tensor_by_name('learning_rate:0')
+                    self.ph_noobj_scale = graph.get_tensor_by_name('noobj_scale:0')
+                    self.ph_coord_scale = graph.get_tensor_by_name('coord_scale:0')
+                    self.ph_isobj_scale = graph.get_tensor_by_name('isobj_scale:0')
+                    # self.saver = tf.train.Saver(max_to_keep=10)
+                    self.restored = True
+                except KeyError as e:
+                    tf.logging.fatal("Restoring was not successful. KeyError exception was raised.")
+                    tf.logging.fatal(e)
+                    exit(1)
             elif path is not None:
                 # self.__create_network()
                 variables = None
@@ -599,25 +618,7 @@ class YoloV0(ANN):
             else:
                 tf.logging.info('Restore pass was not specified, exiting.')
                 exit(1)
-            try:
-                graph = tf.get_default_graph()
-                self.x = graph.get_tensor_by_name('Input:0')
-                self.y_true = graph.get_tensor_by_name('labels:0')
-                self.predictions = graph.get_tensor_by_name('FC_1/output:0')
-                self.loss = graph.get_tensor_by_name('Loss_function/Loss/loss:0')
-                self.optimizer = graph.get_operation_by_name('Optimizer/optimizer')
-                self.global_step = graph.get_tensor_by_name('global_step:0')
-                self.ph_train = graph.get_tensor_by_name('training:0')
-                self.ph_learning_rate = graph.get_tensor_by_name('learning_rate:0')
-                self.ph_noobj_scale = graph.get_tensor_by_name('noobj_scale:0')
-                self.ph_coord_scale = graph.get_tensor_by_name('coord_scale:0')
-                self.ph_isobj_scale = graph.get_tensor_by_name('isobj_scale:0')
-                # self.saver = tf.train.Saver(max_to_keep=10)
-                self.restored = True
-            except KeyError as e:
-                tf.logging.fatal("Restoring was not successful. KeyError exception was raised.")
-                tf.logging.fatal(e)
-                exit(1)
+
 
     def open_sess(self):
         if not self.sess:

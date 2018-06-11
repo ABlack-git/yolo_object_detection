@@ -6,7 +6,7 @@ import numpy as np
 
 class DatasetGenerator:
 
-    def __init__(self, img_dir, labels_dir, img_size, grid_size, no_boxes, shuffle=True):
+    def __init__(self, img_dir, labels_dir, img_size, grid_size, no_boxes, shuffle=True, sqrt=True):
         self.img_dir = img_dir
         self.shuffle = shuffle
         self.labels_dir = labels_dir
@@ -20,6 +20,7 @@ class DatasetGenerator:
         self.no_boxes = no_boxes
         self.grid_w = self.image_w / self.grid_n
         self.grid_h = self.image_h / self.grid_m
+        self.sqrt = sqrt
 
     def get_imgs(self):
         imgs = []
@@ -86,8 +87,12 @@ class DatasetGenerator:
                 try:
                     label[k + 5 * box_n] = box[0] / self.grid_w - i
                     label[k + 1 + 5 * box_n] = box[1] / self.grid_h - j
-                    label[k + 2 + 5 * box_n] = np.sqrt(box[2]) / self.image_w
-                    label[k + 3 + 5 * box_n] = np.sqrt(box[3]) / self.image_h
+                    if self.sqrt:
+                        label[k + 2 + 5 * box_n] = np.sqrt(box[2]) / self.image_w
+                        label[k + 3 + 5 * box_n] = np.sqrt(box[3]) / self.image_h
+                    else:
+                        label[k + 2 + 5 * box_n] = box[2] / self.image_w
+                        label[k + 3 + 5 * box_n] = box[3] / self.image_h
                     label[k + 4 + 5 * box_n] = 1
                 except IndexError:
                     print('k: %d, i: %.1f, j: %.1f, box_w: %f, box_h: %f, labels_size %s' % (

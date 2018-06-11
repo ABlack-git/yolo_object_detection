@@ -48,6 +48,7 @@ class YoloV0(ANN):
         self.restored = False
         self.restore_bool = False
         self.write_grads = False
+        self.sqrt = True
         # Model initialization
         self.open_sess()
         self.__create_network()
@@ -187,7 +188,10 @@ class YoloV0(ANN):
                     self.no_boxes = 1
                 if parser.has_option(section, 'optimizer_param'):
                     self.optimizer_param = parser.getfloat(section, 'optimizer_param')
-
+                if parser.has_option(section, 'sqrt'):
+                    self.sqrt = parser.getboolean(section, 'sqrt')
+                else:
+                    self.sqrt = True
                 if parser.has_option(section, 'restore'):
                     self.restore_bool = parser.getboolean(section, 'restore')
                     if self.restore_bool:
@@ -310,10 +314,12 @@ class YoloV0(ANN):
         summary_folder = '%d_%d_%d__%d-%d' % (now.day, now.month, now.year, now.hour, now.minute)
         summary_writer = tf.summary.FileWriter(os.path.join(model_folder, summary_folder), graph=tf.get_default_graph())
         summary = tf.summary.merge_all()
-        ts = DatasetGenerator(training_set[0], training_set[1], self.img_size, self.grid_size, self.no_boxes)
+        ts = DatasetGenerator(training_set[0], training_set[1], self.img_size, self.grid_size, self.no_boxes,
+                              sqrt=self.sqrt)
         save_path = os.path.join(self.save_path, self.model_version)
         if valid_set is not None:
-            vs = DatasetGenerator(valid_set[0], valid_set[1], self.img_size, self.grid_size, self.no_boxes)
+            vs = DatasetGenerator(valid_set[0], valid_set[1], self.img_size, self.grid_size, self.no_boxes,
+                                  sqrt=self.sqrt)
         tf.logging.info(
             'Starting to train model. Current global step is %s' % tf.train.global_step(self.sess, self.global_step))
         for _ in range(epochs):
@@ -441,8 +447,12 @@ class YoloV0(ANN):
 
                 y_px = (y_pred[:, :, 0] + g_i) * self.img_size[0] / self.grid_size[0]
                 y_py = (y_pred[:, :, 1] + g_j) * self.img_size[1] / self.grid_size[1]
-                y_pw = tf.pow(y_pred[:, :, 2] * self.img_size[0], 2)
-                y_ph = tf.pow(y_pred[:, :, 3] * self.img_size[1], 2)
+                if self.sqrt:
+                    y_pw = tf.pow(y_pred[:, :, 2] * self.img_size[0], 2)
+                    y_ph = tf.pow(y_pred[:, :, 3] * self.img_size[1], 2)
+                else:
+                    y_pw = y_pred[:, :, 2] * self.img_size[0]
+                    y_ph = y_pred[:, :, 3] * self.img_size[1]
             with tf.name_scope('Covert_coords'):
                 x_tl_1 = y_tx - tf.round(y_tw / 2)
                 y_tl_1 = y_ty - tf.round(y_th / 2)
@@ -492,8 +502,12 @@ class YoloV0(ANN):
         for i in range(self.grid_size[0] * self.grid_size[1]):
             preds[:, i, 0] = np.round((preds[:, i, 0] + counter_i) * self.img_size[0] / self.grid_size[0])
             preds[:, i, 1] = np.round((preds[:, i, 1] + counter_j) * self.img_size[1] / self.grid_size[1])
-            preds[:, i, 2] = np.round(np.power(preds[:, i, 2] * self.img_size[0], 2))
-            preds[:, i, 3] = np.round(np.power(preds[:, i, 3] * self.img_size[1], 2))
+            if self.sqrt:
+                preds[:, i, 2] = np.round(np.power(preds[:, i, 2] * self.img_size[0], 2))
+                preds[:, i, 3] = np.round(np.power(preds[:, i, 3] * self.img_size[1], 2))
+            else:
+                preds[:, i, 2] = np.round(preds[:, i, 2] * self.img_size[0])
+                preds[:, i, 3] = np.round(preds[:, i, 3] * self.img_size[1])
             counter_i += 1
             if (i + 1) % self.grid_size[0] == 0:
                 counter_i = 0
@@ -618,7 +632,6 @@ class YoloV0(ANN):
             else:
                 tf.logging.info('Restore pass was not specified, exiting.')
                 exit(1)
-
 
     def open_sess(self):
         if not self.sess:

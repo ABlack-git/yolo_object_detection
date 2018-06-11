@@ -315,11 +315,11 @@ class YoloV0(ANN):
                 ind = 0
 
                 for k, e_step in enumerate(self.epoch_step):
-                    if g_step / no_batches <= e_step:
+                    if (g_step / no_batches) < e_step:
                         ind = k
                         break
 
-                    if k == len(e_step) - 1:
+                    if k == len(self.epoch_step) - 1:
                         ind = k
 
                 if (g_step + 1) % 50 == 0:
@@ -384,13 +384,14 @@ class YoloV0(ANN):
                                          self.ph_prob_noobj: self.prob_noobj[ind],
                                          self.ph_prob_isobj: self.prob_isobj[ind]})
                 t_f = time.time() - t_0
-                epoch = int(g_step / no_batches)+1
+                epoch = int(g_step / no_batches) + 1
                 tf.logging.info('Global step: %d, epoch: %d, Batch processed: %d/%d, Time to process batch: %.2f' % (
                     g_step, epoch, i + 1, no_batches, t_f))
-                tf.logging.info('Learning rate %e, coord scale: %e, noobj scale: %e, is obj scale: %e, prob noobj: %e, '
-                                'prob is obj: %e' % (self.learning_rate[ind], self.coord_scale[ind],
-                                                     self.noobj_scale[ind], self.isobj_scale[ind], self.prob_noobj[ind],
-                                                     self.prob_isobj[ind]))
+                tf.logging.info('Learning rate %.2e, coord scale: %.2e, noobj scale: %.2e, is obj scale: %.2e, '
+                                'prob noobj: %.2e, prob is obj: %.2e' % (self.learning_rate[ind], self.coord_scale[ind],
+                                                                         self.noobj_scale[ind], self.isobj_scale[ind],
+                                                                         self.prob_noobj[ind],
+                                                                         self.prob_isobj[ind]))
             # save every epoch
             self.save(save_path, self.model_version)
 

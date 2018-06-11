@@ -109,9 +109,6 @@ class YoloV0(ANN):
                 iou = self.tf_iou(y_true, y_pred)
                 tf.stop_gradient(iou)
                 self.summary_list.append(tf.summary.histogram('IOU', iou))
-                # with tf.name_scope('Confidence'):
-                # confidence = tf.multiply(is_obj, iou, name='confidence')
-                # tf.stop_gradient(confidence)
                 with tf.variable_scope('no_obj'):
                     no_obj = tf.to_float(tf.not_equal(is_obj, 1))
                 # add confidence where object is present
@@ -132,7 +129,6 @@ class YoloV0(ANN):
                 with tf.variable_scope('Loss'):
                     self.loss = tf.add_n([xy_loss, wh_loss, c_obj_loss, c_noobj_loss, prob_obj_loss, prob_noobj_loss],
                                          name='loss')
-                    # self.loss = tf.add(xy_loss + wh_loss, c_obj_loss + c_noobj_loss, name='loss')
 
                 self.summary_list.append(tf.summary.scalar('xy_loss', xy_loss))
                 self.summary_list.append(tf.summary.scalar('wh_loss', wh_loss))
@@ -143,7 +139,7 @@ class YoloV0(ANN):
                 self.summary_list.append(tf.summary.scalar('Loss', self.loss))
                 self.summary_list.append(tf.summary.histogram('is_obj', is_obj))
                 self.summary_list.append(tf.summary.histogram('no_obj', no_obj))
-                # self.summary_list.append(tf.summary.histogram('confidance', confidence))
+                return self.loss
 
     def init_network(self, cfg):
         parser = configparser.ConfigParser()
@@ -308,33 +304,44 @@ class YoloV0(ANN):
         tf.logging.info(
             'Starting to train model. Current global step is %s' % tf.train.global_step(self.sess, self.global_step))
         for _ in range(epochs):
+
             batch = ts.get_minibatch(self.batch_size)
             no_batches = ts.get_number_of_batches(self.batch_size)
             for i in range(no_batches):
                 t_0 = time.time()
                 imgs, labels = next(batch)
                 g_step = tf.train.global_step(self.sess, self.global_step)
-                if g_step % 50 == 0:
+                ind = 0
+
+                for k, e_step in enumerate(self.epoch_step):
+                    if g_step / no_batches <= e_step:
+                        ind = k
+                        break
+
+                    if k == len(e_step) - 1:
+                        ind = k
+
+                if g_step % int(no_batches / 3) == 0:
                     val_t0 = time.time()
                     s = self.sess.run(summary, feed_dict={self.x: imgs, self.y_true: labels,
-                                                          self.ph_learning_rate: self.learning_rate,
-                                                          self.ph_coord_scale: self.coord_scale,
-                                                          self.ph_noobj_scale: self.noobj_scale,
+                                                          self.ph_learning_rate: self.learning_rate[ind],
+                                                          self.ph_coord_scale: self.coord_scale[ind],
+                                                          self.ph_noobj_scale: self.noobj_scale[ind],
                                                           self.ph_train: False,
-                                                          self.ph_isobj_scale: self.isobj_scale,
-                                                          self.ph_prob_noobj: self.prob_noobj,
-                                                          self.ph_prob_isobj: self.prob_isobj})
+                                                          self.ph_isobj_scale: self.isobj_scale[ind],
+                                                          self.ph_prob_noobj: self.prob_noobj[ind],
+                                                          self.ph_prob_isobj: self.prob_isobj[ind]})
                     summary_writer.add_summary(s, tf.train.global_step(self.sess, self.global_step))
                     summary_writer.flush()
                     loss, preds = self.sess.run([self.loss, self.predictions],
                                                 feed_dict={self.x: imgs, self.y_true: labels,
-                                                           self.ph_learning_rate: self.learning_rate,
-                                                           self.ph_coord_scale: self.coord_scale,
-                                                           self.ph_noobj_scale: self.noobj_scale,
+                                                           self.ph_learning_rate: self.learning_rate[ind],
+                                                           self.ph_coord_scale: self.coord_scale[ind],
+                                                           self.ph_noobj_scale: self.noobj_scale[ind],
                                                            self.ph_train: False,
-                                                           self.ph_isobj_scale: self.isobj_scale,
-                                                           self.ph_prob_noobj: self.prob_noobj,
-                                                           self.ph_prob_isobj: self.prob_isobj})
+                                                           self.ph_isobj_scale: self.isobj_scale[ind],
+                                                           self.ph_prob_noobj: self.prob_noobj[ind],
+                                                           self.ph_prob_isobj: self.prob_isobj[ind]})
                     print(np.asarray(preds, np.float32))
                     b_preds = self.predictions_to_boxes(preds)
                     b_true = self.predictions_to_boxes(labels, num=5)
@@ -367,13 +374,14 @@ class YoloV0(ANN):
                     self.test_model(self.batch_size)
 
                 self.sess.run([self.optimizer],
-                              feed_dict={self.x: imgs, self.y_true: labels, self.ph_learning_rate: self.learning_rate,
-                                         self.ph_coord_scale: self.coord_scale,
-                                         self.ph_noobj_scale: self.noobj_scale,
+                              feed_dict={self.x: imgs, self.y_true: labels,
+                                         self.ph_learning_rate: self.learning_rate[ind],
+                                         self.ph_coord_scale: self.coord_scale[ind],
+                                         self.ph_noobj_scale: self.noobj_scale[ind],
                                          self.ph_train: True,
-                                         self.ph_isobj_scale: self.isobj_scale,
-                                         self.ph_prob_noobj: self.prob_noobj,
-                                         self.ph_prob_isobj: self.prob_isobj})
+                                         self.ph_isobj_scale: self.isobj_scale[ind],
+                                         self.ph_prob_noobj: self.prob_noobj[ind],
+                                         self.ph_prob_isobj: self.prob_isobj[ind]})
                 t_f = time.time() - t_0
                 tf.logging.info('Global step: %s, Batch processed: %d/%d, Time to process batch: %.2f' % (
                     tf.train.global_step(self.sess, self.global_step), i + 1, no_batches, t_f))
@@ -596,10 +604,6 @@ class YoloV0(ANN):
         if not self.sess:
             self.sess = tf.Session()
             self.sess.run(tf.global_variables_initializer())
-
-            # writer = tf.summary.FileWriter(os.path.join('summaries', 'graph'), graph=tf.get_default_graph(),
-            #                                filename_suffix='graph_')
-            # writer.flush()
 
     def close_sess(self):
         self.sess.close()

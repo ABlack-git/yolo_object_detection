@@ -322,7 +322,7 @@ class YoloV0(ANN):
                     if k == len(e_step) - 1:
                         ind = k
 
-                if g_step + 1 % 50 == 0:
+                if (g_step + 1) % 50 == 0:
                     val_t0 = time.time()
                     s = self.sess.run(summary, feed_dict={self.x: imgs, self.y_true: labels,
                                                           self.ph_learning_rate: self.learning_rate[ind],
@@ -384,11 +384,11 @@ class YoloV0(ANN):
                                          self.ph_prob_noobj: self.prob_noobj[ind],
                                          self.ph_prob_isobj: self.prob_isobj[ind]})
                 t_f = time.time() - t_0
-                epoch = int(g_step / no_batches)
+                epoch = int(g_step / no_batches)+1
                 tf.logging.info('Global step: %d, epoch: %d, Batch processed: %d/%d, Time to process batch: %.2f' % (
                     g_step, epoch, i + 1, no_batches, t_f))
-                tf.logging.info('Learning rate %f, coord scale: %f, noobj scale: %f, is obj scale: %f, prob noobj: %f, '
-                                'prob is obj: %f' % (self.learning_rate[ind], self.coord_scale[ind],
+                tf.logging.info('Learning rate %e, coord scale: %e, noobj scale: %e, is obj scale: %e, prob noobj: %e, '
+                                'prob is obj: %e' % (self.learning_rate[ind], self.coord_scale[ind],
                                                      self.noobj_scale[ind], self.isobj_scale[ind], self.prob_noobj[ind],
                                                      self.prob_isobj[ind]))
             # save every epoch

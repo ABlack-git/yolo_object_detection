@@ -209,26 +209,31 @@ def test_dataset():
     dataset = DatasetGenerator(imgs_dir, labels_dir, img_size, grid_size, 1)
     batch = dataset.get_minibatch(10)
     net = YoloV0(grid_size, img_size)
-
-    for i in range(dataset.get_number_of_batches(10)):
-        imgs, labels = next(batch)
-        print(np.shape(imgs))
-        boxes = net.predictions_to_boxes(labels)
-        boxes = net.convert_coords(boxes)
-        tmp = []
-        for b_true in boxes:
-            tmp.append(np.delete(b_true, np.where(b_true[:, 4] != 1.0), axis=0))
-        boxes = tmp
-        for ind, image in enumerate(imgs):
-            utils.draw_grid(image, grid_size)
-            utils.draw_bbox(boxes[ind], image)
-            cv2.imshow('image', image)
-            k = cv2.waitKey(25)
-            if k == ord(' '):
-                pass
-            elif k == 27:
-                cv2.destroyAllWindows()
-                exit(0)
+    _, labels = next(batch)
+    for label in labels:
+        for i in label:
+            if i != 0:
+                print(i, end=' ')
+        print('')
+    # for i in range(dataset.get_number_of_batches(10)):
+    #     imgs, labels = next(batch)
+    #     print(np.shape(imgs))
+    #     boxes = net.predictions_to_boxes(labels, 5)
+    #     boxes = net.convert_coords(boxes)
+    #     tmp = []
+    #     for b_true in boxes:
+    #         tmp.append(np.delete(b_true, np.where(b_true[:, 4] != 1.0), axis=0))
+    #     boxes = tmp
+    #     for ind, image in enumerate(imgs):
+    #         utils.draw_grid(image, grid_size)
+    #         utils.draw_bbox(boxes[ind], image)
+    #         cv2.imshow('image', image)
+    #         k = cv2.waitKey(25)
+    #         if k == ord(' '):
+    #             pass
+    #         elif k == 27:
+    #             cv2.destroyAllWindows()
+    #             exit(0)
 
 
 if __name__ == '__main__':

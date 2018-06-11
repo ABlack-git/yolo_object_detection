@@ -60,10 +60,11 @@ class YoloV0(ANN):
         self.ph_prob_noobj = tf.placeholder(tf.float32, shape=(), name='prob_noobj')
         self.ph_prob_isobj = tf.placeholder(tf.float32, shape=(), name='prob_noobj')
         self.ph_train = tf.placeholder(tf.bool, name='training')
+        self.global_step = tf.Variable(0, name="global_step", trainable=False)
         self.init_network(self.cfg)
         self.loss_func(self.predictions, self.y_true)
         self._optimizer(self.optimizer_type, self.optimizer_param, write_summary=self.write_grads)
-        self.global_step = tf.Variable(0, name="global_step", trainable=False)
+
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver(max_to_keep=10)
         if self.restore_bool:
@@ -373,7 +374,7 @@ class YoloV0(ANN):
                 if (i + 1) % 200 == 0:
                     self.test_model(self.batch_size)
 
-                self.sess.run([self.optimizer],
+                self.sess.run(self.optimizer,
                               feed_dict={self.x: imgs, self.y_true: labels,
                                          self.ph_learning_rate: self.learning_rate[ind],
                                          self.ph_coord_scale: self.coord_scale[ind],

@@ -141,7 +141,7 @@ class YoloV0(ANN):
                 self.summary_list.append(tf.summary.scalar('Loss', self.loss))
                 self.summary_list.append(tf.summary.histogram('is_obj', is_obj))
                 self.summary_list.append(tf.summary.histogram('no_obj', no_obj))
-                return self.loss
+        return self.loss
 
     def init_network(self, cfg):
         parser = configparser.ConfigParser()
@@ -442,17 +442,19 @@ class YoloV0(ANN):
 
                 y_tx = (y_true[:, :, 0] + g_i) * self.img_size[0] / self.grid_size[0]
                 y_ty = (y_true[:, :, 1] + g_j) * self.img_size[1] / self.grid_size[1]
-                y_tw = tf.pow(y_true[:, :, 2] * self.img_size[0], 2)
-                y_th = tf.pow(y_true[:, :, 3] * self.img_size[1], 2)
 
                 y_px = (y_pred[:, :, 0] + g_i) * self.img_size[0] / self.grid_size[0]
                 y_py = (y_pred[:, :, 1] + g_j) * self.img_size[1] / self.grid_size[1]
                 if self.sqrt:
                     y_pw = tf.pow(y_pred[:, :, 2] * self.img_size[0], 2)
                     y_ph = tf.pow(y_pred[:, :, 3] * self.img_size[1], 2)
+                    y_tw = tf.pow(y_true[:, :, 2] * self.img_size[0], 2)
+                    y_th = tf.pow(y_true[:, :, 3] * self.img_size[1], 2)
                 else:
                     y_pw = y_pred[:, :, 2] * self.img_size[0]
                     y_ph = y_pred[:, :, 3] * self.img_size[1]
+                    y_tw = y_true[:, :, 2] * self.img_size[0]
+                    y_th = y_true[:, :, 3] * self.img_size[1]
             with tf.name_scope('Covert_coords'):
                 x_tl_1 = y_tx - tf.round(y_tw / 2)
                 y_tl_1 = y_ty - tf.round(y_th / 2)

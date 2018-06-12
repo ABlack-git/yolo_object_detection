@@ -6,7 +6,7 @@ import datetime
 import numpy as np
 import time
 import configparser
-import pdb
+
 
 class YoloV0(ANN):
 
@@ -308,7 +308,7 @@ class YoloV0(ANN):
                         self.summary_list.append(
                             tf.summary.histogram("{}-grad".format(grads[i][1].name.replace(':0', '-0')), grads[i]))
 
-    def optimize(self, epochs, training_set, valid_set, summ_step):
+    def optimize(self, epochs, training_set, valid_set, summ_step, test=False):
         now = datetime.datetime.now()
         model_folder = os.path.join(self.summary_path, self.model_version)
         summary_folder = '%d_%d_%d__%d-%d' % (now.day, now.month, now.year, now.hour, now.minute)
@@ -363,35 +363,33 @@ class YoloV0(ANN):
                                                            self.ph_prob_isobj: self.prob_isobj[ind]})
                     print(np.asarray(preds, np.float32))
                     print('Loss: %.3f' % loss)
-                    pdb.set_trace()
-                    b_preds = self.predictions_to_boxes(preds)
-                    b_true = self.predictions_to_boxes(labels, num=5)
-                    b_true = self.convert_coords(b_true)
-                    pdb.set_trace()
-                    tmp = []
-                    for b_img in b_true:
-                        tmp.append(np.delete(b_img, np.where(b_img[:, 4] != 1.0), axis=0))
-                    b_true = tmp
-                    pdb.set_trace()
-                    b_preds = self.nms(b_preds)
-                    stats = self.compute_stats(b_preds, b_true)
-                    tmp = np.sum(stats, axis=0)
-                    no_tp = tmp[0]
-                    avg_prec = tmp[1] / len(stats)
-                    avg_recall = tmp[2] / len(stats)
-                    avg_conf = tmp[3] / len(stats)
-                    avg_iou = tmp[4] / len(stats)
-                    self.log_scalar('t_avg_prec', avg_prec, summary_writer, 'Statistics')
-                    self.log_scalar('t_avg_recall', avg_recall, summary_writer, 'Statistics')
-                    self.log_scalar('t_avg_conf', avg_conf, summary_writer, 'Statistics')
-                    self.log_scalar('t_avg_iou', avg_iou, summary_writer, 'Statistics')
-                    val_tf = time.time() - val_t0
-                    tf.logging.info('Statistics on training set')
-                    tf.logging.info(
-                        'Step: %s, loss: %.4f, no_tp: %d, avg_precision: %.3f, avg_recall %.3f, avg_confidance: %.3f, '
-                        'avg_iou: %.3f, Valiadation time: %.2f'
-                        % (tf.train.global_step(self.sess, self.global_step), loss, no_tp, avg_prec, avg_recall,
-                           avg_conf, avg_iou, val_tf))
+                    if test:
+                        b_preds = self.predictions_to_boxes(preds)
+                        b_true = self.predictions_to_boxes(labels, num=5)
+                        b_true = self.convert_coords(b_true)
+                        tmp = []
+                        for b_img in b_true:
+                            tmp.append(np.delete(b_img, np.where(b_img[:, 4] != 1.0), axis=0))
+                        b_true = tmp
+                        b_preds = self.nms(b_preds)
+                        stats = self.compute_stats(b_preds, b_true)
+                        tmp = np.sum(stats, axis=0)
+                        no_tp = tmp[0]
+                        avg_prec = tmp[1] / len(stats)
+                        avg_recall = tmp[2] / len(stats)
+                        avg_conf = tmp[3] / len(stats)
+                        avg_iou = tmp[4] / len(stats)
+                        self.log_scalar('t_avg_prec', avg_prec, summary_writer, 'Statistics')
+                        self.log_scalar('t_avg_recall', avg_recall, summary_writer, 'Statistics')
+                        self.log_scalar('t_avg_conf', avg_conf, summary_writer, 'Statistics')
+                        self.log_scalar('t_avg_iou', avg_iou, summary_writer, 'Statistics')
+                        val_tf = time.time() - val_t0
+                        tf.logging.info('Statistics on training set')
+                        tf.logging.info('Step: %s, loss: %.4f, no_tp: %d, avg_precision: %.3f, '
+                                        'avg_recall %.3f, avg_confidance: %.3f, avg_iou: %.3f, Valiadation time: %.2f'
+                                        % (tf.train.global_step(self.sess, self.global_step), loss, no_tp, avg_prec,
+                                           avg_recall,
+                                           avg_conf, avg_iou, val_tf))
 
                 if (i + 1) % 200 == 0:
                     self.test_model(self.batch_size)
@@ -527,7 +525,6 @@ class YoloV0(ANN):
         :return: List of np.arrays of shape [batch_size, ?, 5], that correspond to best boxes in batches
         """
         preds = self.convert_coords(preds)
-        pdb.set_trace()
         # sort boxes by their confidence
         indeces = np.argsort(preds[:, :, 4])
         picked = []
@@ -541,7 +538,6 @@ class YoloV0(ANN):
                 batch_picked.append(preds[batch_n, batch_i[last], :])
                 # calculate IoU of all boxes with picked box
                 picked_box = np.tile(preds[batch_n, batch_i[last], :], [len(batch_i), 1])
-                pdb.set_trace()
                 ious = self.iou(picked_box, preds[batch_n, batch_i, :])
                 # delete indexies that have IoU>=threshold
                 batch_i = np.delete(batch_i, np.where(ious >= 0.5))
@@ -560,7 +556,6 @@ class YoloV0(ANN):
         y_a = np.maximum(boxes_a[:, 1], boxes_b[:, 1])
         x_b = np.minimum(boxes_a[:, 2], boxes_b[:, 2])
         y_b = np.minimum(boxes_a[:, 3], boxes_b[:, 3])
-        pdb.set_trace()
 
         inter_area = np.multiply(np.maximum((x_b - x_a + 1), 0), np.maximum((y_b - y_a + 1), 0))
         a_area = np.multiply(boxes_a[:, 2] - boxes_a[:, 0] + 1, boxes_a[:, 3] - boxes_a[:, 1] + 1)

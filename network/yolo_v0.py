@@ -308,7 +308,7 @@ class YoloV0(ANN):
                         self.summary_list.append(
                             tf.summary.histogram("{}-grad".format(grads[i][1].name.replace(':0', '-0')), grads[i]))
 
-    def optimize(self, epochs, training_set, valid_set):
+    def optimize(self, epochs, training_set, valid_set, summ_step):
         now = datetime.datetime.now()
         model_folder = os.path.join(self.summary_path, self.model_version)
         summary_folder = '%d_%d_%d__%d-%d' % (now.day, now.month, now.year, now.hour, now.minute)
@@ -340,7 +340,7 @@ class YoloV0(ANN):
                     if k == len(self.epoch_step) - 1:
                         ind = k
 
-                if (g_step + 1) % 50 == 0:
+                if (g_step + 1) % summ_step == 0:
                     val_t0 = time.time()
                     s = self.sess.run(summary, feed_dict={self.x: imgs, self.y_true: labels,
                                                           self.ph_learning_rate: self.learning_rate[ind],

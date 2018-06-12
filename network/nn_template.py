@@ -20,7 +20,7 @@ class ANN:
     def loss_func(self, predictions, labels):
         raise NotImplementedError
 
-    def optimize(self, epochs, training_set, valid_set):
+    def optimize(self, epochs, training_set, valid_set, summ_step):
         raise NotImplementedError
 
     def save(self, path, name):

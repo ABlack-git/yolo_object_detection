@@ -477,8 +477,8 @@ class YoloV0(ANN):
                 intersection = tf.multiply(tf.maximum(x_br - x_tl + 1, 0), tf.maximum(y_br - y_tl + 1, 0),
                                            name='Intersection')
                 # Compute union area
-                area_1 = (x_br_1 - x_tl_1 + 1) * (y_br_1 - y_tl_1 + 1)
-                area_b = (x_br_2 - x_tl_2 + 1) * (y_br_2 - y_tl_2 + 1)
+                area_1 = tf.maximum((x_br_1 - x_tl_1 + 1) * (y_br_1 - y_tl_1 + 1), 1)
+                area_b = tf.maximum((x_br_2 - x_tl_2 + 1) * (y_br_2 - y_tl_2 + 1), 1)
                 union = tf.subtract(tf.add(area_1, area_b), intersection, name='Union')
 
                 return tf.truediv(intersection, union, name='IoU')

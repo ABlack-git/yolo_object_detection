@@ -45,7 +45,7 @@ class ANN:
             self.summary_list.append(tf.summary.histogram('weights', w))
             if batch_norm:
                 out = tf.layers.batch_normalization(conv, training=self.ph_train, name='batch_norm_layer',
-                                                    trainable=trainable)
+                                                    trainable=trainable, epsilon=0.01)
             else:
                 b = tf.Variable(tf.constant(0.1, shape=[w_shape[3]]), name='biases', trainable=trainable)
                 self.summary_list.append(tf.summary.histogram('biases', b))

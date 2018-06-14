@@ -448,10 +448,10 @@ class YoloV0(ANN):
                 y_px = (y_pred[:, :, 0] + g_i) * self.img_size[0] / self.grid_size[0]
                 y_py = (y_pred[:, :, 1] + g_j) * self.img_size[1] / self.grid_size[1]
                 if self.sqrt:
-                    y_pw = tf.pow(y_pred[:, :, 2] * self.img_size[0], 2)
-                    y_ph = tf.pow(y_pred[:, :, 3] * self.img_size[1], 2)
-                    y_tw = tf.pow(y_true[:, :, 2] * self.img_size[0], 2)
-                    y_th = tf.pow(y_true[:, :, 3] * self.img_size[1], 2)
+                    y_pw = tf.pow(y_pred[:, :, 2], 2) * self.img_size[0]
+                    y_ph = tf.pow(y_pred[:, :, 3], 2) * self.img_size[1]
+                    y_tw = tf.pow(y_true[:, :, 2], 2) * self.img_size[0]
+                    y_th = tf.pow(y_true[:, :, 3], 2) * self.img_size[1]
                 else:
                     y_pw = y_pred[:, :, 2] * self.img_size[0]
                     y_ph = y_pred[:, :, 3] * self.img_size[1]
@@ -507,8 +507,8 @@ class YoloV0(ANN):
             preds[:, i, 0] = np.round((preds[:, i, 0] + counter_i) * self.img_size[0] / self.grid_size[0])
             preds[:, i, 1] = np.round((preds[:, i, 1] + counter_j) * self.img_size[1] / self.grid_size[1])
             if self.sqrt:
-                preds[:, i, 2] = np.round(np.power(preds[:, i, 2] * self.img_size[0], 2))
-                preds[:, i, 3] = np.round(np.power(preds[:, i, 3] * self.img_size[1], 2))
+                preds[:, i, 2] = np.round(np.power(preds[:, i, 2], 2) * self.img_size[0])
+                preds[:, i, 3] = np.round(np.power(preds[:, i, 3], 2) * self.img_size[1])
             else:
                 preds[:, i, 2] = np.round(preds[:, i, 2] * self.img_size[0])
                 preds[:, i, 3] = np.round(preds[:, i, 3] * self.img_size[1])

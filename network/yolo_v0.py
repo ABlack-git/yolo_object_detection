@@ -76,7 +76,7 @@ class YoloV0(ANN):
             with tf.name_scope('Loss_function'):
                 y_pred = tf.reshape(y_pred, [-1, self.grid_size[0] * self.grid_size[1], 6], name='reshape_pred')
                 y_true = tf.reshape(y_true, [-1, self.grid_size[0] * self.grid_size[1], 5], name='reshape_truth')
-                # define name scopes
+                # define name scopes for better representation in tensorboard
                 with tf.variable_scope('is_obj'):
                     is_obj = y_true[:, :, 4]
                 with tf.variable_scope('t_x'):
@@ -284,7 +284,7 @@ class YoloV0(ANN):
         if not self.optimizer:
             with tf.name_scope('Optimizer'):
                 if optimizer == 'Adam':
-                    self.optimizer = tf.train.AdamOptimizer(self.ph_learning_rate)
+                    self.optimizer = tf.train.AdamOptimizer(self.ph_learning_rate, epsilon=0.1)
                     tf.logging.info('Using %s optimizer' % optimizer)
                 elif optimizer == 'SGD':
                     tf.logging.info('Using %s optimizer' % optimizer)
@@ -308,7 +308,7 @@ class YoloV0(ANN):
                         self.summary_list.append(
                             tf.summary.histogram("{}-grad".format(grads[i][1].name.replace(':0', '-0')), grads[i]))
 
-    def optimize(self, epochs, training_set, valid_set, summ_step, test=False):
+    def optimize(self, no_epochs, training_set, valid_set, summ_step, do_test=False):
         now = datetime.datetime.now()
         model_folder = os.path.join(self.summary_path, self.model_version)
         summary_folder = '%d_%d_%d__%d-%d' % (now.day, now.month, now.year, now.hour, now.minute)
@@ -320,10 +320,9 @@ class YoloV0(ANN):
         if valid_set is not None:
             vs = DatasetGenerator(valid_set[0], valid_set[1], self.img_size, self.grid_size, self.no_boxes,
                                   sqrt=self.sqrt)
-        tf.logging.info(
-            'Starting to train model. Current global step is %s' % tf.train.global_step(self.sess, self.global_step))
-        for _ in range(epochs):
-
+        tf.logging.info('Starting to train model. Current global step is %s'
+                        % tf.train.global_step(self.sess, self.global_step))
+        for _ in range(no_epochs):
             batch = ts.get_minibatch(self.batch_size)
             no_batches = ts.get_number_of_batches(self.batch_size)
             for i in range(no_batches):
@@ -331,12 +330,10 @@ class YoloV0(ANN):
                 imgs, labels = next(batch)
                 g_step = tf.train.global_step(self.sess, self.global_step)
                 ind = 0
-
                 for k, e_step in enumerate(self.epoch_step):
                     if (g_step / no_batches) < e_step:
                         ind = k
                         break
-
                     if k == len(self.epoch_step) - 1:
                         ind = k
 
@@ -361,11 +358,9 @@ class YoloV0(ANN):
                                                            self.ph_isobj_scale: self.isobj_scale[ind],
                                                            self.ph_prob_noobj: self.prob_noobj[ind],
                                                            self.ph_prob_isobj: self.prob_isobj[ind]})
-                    print(np.asarray(preds, np.float32))
-                    print('Loss: %.3f' % loss)
-                    if test:
+                    if do_test:
                         b_preds = self.predictions_to_boxes(preds)
-                        b_true = self.predictions_to_boxes(labels, num=5)
+                        b_true = self.predictions_to_boxes(labels, last_dim_size=5)
                         b_true = self.convert_coords(b_true)
                         tmp = []
                         for b_img in b_true:
@@ -391,22 +386,22 @@ class YoloV0(ANN):
                                            avg_recall,
                                            avg_conf, avg_iou, val_tf))
 
-                if (i + 1) % 200 == 0:
+                if (i + 1) % 200 == 0 and do_test:
                     self.test_model(self.batch_size)
 
-                self.sess.run(self.optimizer,
-                              feed_dict={self.x: imgs, self.y_true: labels,
-                                         self.ph_learning_rate: self.learning_rate[ind],
-                                         self.ph_coord_scale: self.coord_scale[ind],
-                                         self.ph_noobj_scale: self.noobj_scale[ind],
-                                         self.ph_train: True,
-                                         self.ph_isobj_scale: self.isobj_scale[ind],
-                                         self.ph_prob_noobj: self.prob_noobj[ind],
-                                         self.ph_prob_isobj: self.prob_isobj[ind]})
+                _, loss = self.sess.run([self.optimizer, self.loss],
+                                        feed_dict={self.x: imgs, self.y_true: labels,
+                                                   self.ph_learning_rate: self.learning_rate[ind],
+                                                   self.ph_coord_scale: self.coord_scale[ind],
+                                                   self.ph_noobj_scale: self.noobj_scale[ind],
+                                                   self.ph_train: True,
+                                                   self.ph_isobj_scale: self.isobj_scale[ind],
+                                                   self.ph_prob_noobj: self.prob_noobj[ind],
+                                                   self.ph_prob_isobj: self.prob_isobj[ind]})
                 t_f = time.time() - t_0
                 epoch = int(g_step / no_batches) + 1
-                tf.logging.info('Global step: %d, epoch: %d, Batch processed: %d/%d, Time to process batch: %.2f' % (
-                    g_step, epoch, i + 1, no_batches, t_f))
+                tf.logging.info('Global step: %d, epoch: %d, loss: %.3f, Batch processed: %d/%d, '
+                                'Time to process batch: %.2f' % (g_step, epoch, loss, i + 1, no_batches, t_f))
                 tf.logging.info('Learning rate %.2e, coord scale: %.2e, noobj scale: %.2e, is obj scale: %.2e, '
                                 'prob noobj: %.2e, prob is obj: %.2e' % (self.learning_rate[ind], self.coord_scale[ind],
                                                                          self.noobj_scale[ind], self.isobj_scale[ind],
@@ -417,11 +412,13 @@ class YoloV0(ANN):
 
     def tf_iou(self, y_true, y_pred):
         """
-        Computes IoU with tf functions.
+        Computes IoU using tensorflow functions. As an input this function takes tensors of predictions and ground
+        truth. Data in those tensors is represented in grid cell format and internally converted to conventional
+        bounding box format.
 
         :param y_true: A tensor of size [batch_size, S*S, size>=4].
         :param y_pred: A tensor of size [batch_size, S*S, size>=4].
-        Where S is the number of cells, B number of boxes and
+        Where S is the number of cells.
         4 is the size of last dimension, that corresponds to x_c, y_c, w, h.
         :return: A tensor of size [batch_size, S], where each element is IoU of predicted box with ground truth box.
         """
@@ -493,14 +490,15 @@ class YoloV0(ANN):
             raise TypeError
         return self.sess.run(self.predictions, feed_dict={self.x: x, self.ph_train: False})
 
-    def predictions_to_boxes(self, preds, num=6):
+    def predictions_to_boxes(self, preds, last_dim_size=6):
         """
         Coverts predictions of network to bounding box format.
         :param preds: Predictions of the network. Shape [batch_size,S*S*5].
+        :param last_dim_size: Size of last dimension.
         :return: Returns ALL boxes predicted by the network. Boxes coordinates corespond to pixels.
         Shape of returned tensor is [batch_size, S*S, 5]
         """
-        preds = np.reshape(preds, [self.batch_size, self.grid_size[0] * self.grid_size[1], num])
+        preds = np.reshape(preds, [self.batch_size, self.grid_size[0] * self.grid_size[1], last_dim_size])
         counter_i = 0
         counter_j = 0
         for i in range(self.grid_size[0] * self.grid_size[1]):
@@ -704,7 +702,7 @@ class YoloV0(ANN):
 
 
 if __name__ == '__main__':
-    cfg_file = '/Users/mac/Documents/Study/IND/yolo_object_detection/cfg/model_8l_1.cfg'
+    cfg_file = 'cfg/model_8l_1.cfg'
     net = YoloV0(cfg_file)
     net.graph_summary()
     net.close_sess()

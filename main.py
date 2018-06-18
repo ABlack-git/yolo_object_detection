@@ -1,46 +1,56 @@
 from network.yolo_v0 import YoloV0
-from data.dataset_generator import DatasetGenerator
-import numpy as np
+import argparse
+import os
 
 
-# loss_scale, training_set_imgs, training_set_labels, batch_size, learning_rate
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-cfg', action='store', type=str, help='Path to .cfg file.')
+    parser.add_argument('-pp', action='store', dest='weights_path', type=str, help='path to parameters that should be '
+                                                                                   'loaded', default=None)
+    parser.add_argument('-epochs', action='store', type=int, help='Number of epochs to process.', default=10)
+    parser.add_argument('-timages', action='store', type=str, help='Path to training images.',
+                        default="E:\Andrew\Dataset\Training set\Images")
+    parser.add_argument('-vimages', action='store', type=str, help='Path to validation images.', default=None)
+    parser.add_argument('-tlabels', action='store', type=str, help='Path to training labels.',
+                        default="E:\Andrew\Dataset\Training set\Annotations")
+    parser.add_argument('-vlabels', action='store', type=str, help='Path to validation labels.',
+                        default=None)
+    parser.add_argument('-summstep', action='store', type=int, help='Specifies number of steps after summaries will be'
+                                                                    ' written', default=10)
+    parser.add_argument('-test', action='store_true')
 
-def first_run():
-    params = {'coord_scale': 5,
-              'noobj_scale': 0.15,
-              'training_set_imgs': "E:\Andrew\Dataset\Training set\Images",
-              'training_set_labels': "E:\Andrew\Dataset\Training set\Annotations",
-              'batch_size': 32,
-              'learning_rate': 0.0001,
-              'optimizer': 'Adam',
-              'threshold': 0.25,
-              'save_path': "E:\Andrew\Model_checkpoints\model_01"}
-    img_size = (720, 480)
-    grid_size = (36, 24)
-    net = YoloV0(grid_size, img_size, params)
-    net.set_logger_verbosity()
-    net.optimize(5)
-    net.close_sess()
+    arguments = parser.parse_args()
+    print(arguments)
+
+    if not os.path.isfile(arguments.cfg):
+        parser.error("argument -cfg: invalid path to .cfg file.")
+    if not os.path.exists(arguments.timages):
+        parser.error("argument -timages: invalid path to training images directory")
+    if not os.path.exists(arguments.tlabels):
+        parser.error("argument -tlabels: invalid path to training labels directory")
+    if arguments.vimages is not None:
+        if not os.path.exists(arguments.vimages):
+            parser.error("argument -vimages: invalid path to validation images directory")
+    if arguments.vlabels is not None:
+        if not os.path.exists(arguments.vlabels):
+            parser.error("argument -vlabels: invalid path to validation labels directory")
+
+    return arguments
 
 
-def restore_and_run():
-    params = {'coord_scale': 5,
-              'noobj_scale': 0.15,
-              'training_set_imgs': "E:\Andrew\Dataset\Training set\Images",
-              'training_set_labels': "E:\Andrew\Dataset\Training set\Annotations",
-              'batch_size': 32,
-              'learning_rate': 0.0001,
-              'optimizer': 'Adam',
-              'threshold': 0.25,
-              'save_path': "E:\Andrew\Model_checkpoints\model_02"}
-    model_path ="E:\Andrew\Model_checkpoints\model_02\model-12504"
-    meta_path ="E:\Andrew\Model_checkpoints\model_02\model-12504.meta"
-    img_size = (720, 480)
-    grid_size = (36, 24)
-    net = YoloV0(grid_size, img_size, params, restore=True)
-    net.restore(model_path, meta_path)
-    net.optimize(10)
-    net.save(params.get('save_path'), 'model')
+def main():
+    args = parse_args()
+    training_set = [args.timages, args.tlabels]
+    valid_set = None
+    net = YoloV0(args.cfg)
+    if (args.vimages is not None) and (args.vlabels is not None):
+        valid_set = [args.vimages, args.vlabels]
+    # restore if path to weights was provided
+    if args.pp is not None:
+        net.restore(path=args.pp)
+    net.optimize(args.epochs, training_set, valid_set, args.summstep, do_test=args.test)
+
 
 if __name__ == '__main__':
-    restore_and_run()
+    main()

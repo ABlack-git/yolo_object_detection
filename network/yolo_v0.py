@@ -419,7 +419,7 @@ class YoloV0(ANN):
                 tf.logging.info('Global step: %d, epoch: %d, loss: %.3f, Batch processed: %d/%d, '
                                 'Time to process batch: %.2f' % (g_step, epoch, loss, i + 1, no_batches, t_f))
                 tf.logging.info('Learning rate %.2e, coord scale: %.2e, noobj scale: %.2e, is obj scale: %.2e, '
-                                'prob noobj: %.2e, prob is obj: %.2e' % (self.learning_rate[ind], self.coord_scale[ind],
+                                'prob noobj: %.2e, prob is obj: %.2e' % (lr, self.coord_scale[ind],
                                                                          self.noobj_scale[ind], self.isobj_scale[ind],
                                                                          self.prob_noobj[ind],
                                                                          self.prob_isobj[ind]))

@@ -192,7 +192,7 @@ class YoloV0(ANN):
                     self.lr_policy = ['const' for _ in range(len(self.learning_rate))]
 
                 if parser.has_option(section, 'lr_param'):
-                    self.lr_param = [float(val) for val in parser.get(set, 'lr_param').split(',')]
+                    self.lr_param = [float(val) for val in parser.get(section, 'lr_param').split(',')]
                     if len(self.lr_param) != len(self.epoch_step):
                         raise ValueError('Length of lr_param array is not equal to epoch step array')
                 else:

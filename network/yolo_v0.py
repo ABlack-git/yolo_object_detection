@@ -343,7 +343,7 @@ class YoloV0(ANN):
                                                           self.ph_learning_rate: self.learning_rate[ind],
                                                           self.ph_coord_scale: self.coord_scale[ind],
                                                           self.ph_noobj_scale: self.noobj_scale[ind],
-                                                          self.ph_train: False,
+                                                          self.ph_train: True,
                                                           self.ph_isobj_scale: self.isobj_scale[ind],
                                                           self.ph_prob_noobj: self.prob_noobj[ind],
                                                           self.ph_prob_isobj: self.prob_isobj[ind]})

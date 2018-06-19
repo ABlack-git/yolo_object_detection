@@ -38,6 +38,8 @@ class YoloV0(ANN):
         self.nms_threshold = None
         self.no_boxes = 1
         self.optimizer_param = None
+        self.lr_policy = None
+        self.lr_param = None
         # strings
         self.load_path = ''
         self.optimizer_type = ''
@@ -182,6 +184,20 @@ class YoloV0(ANN):
                 self.optimizer_type = parser.get(section, 'optimizer')
                 self.save_path = parser.get(section, 'save_path')
                 # optional
+                if parser.has_option(section, 'lr_policy'):
+                    self.lr_policy = [val for val in parser.get(section, 'lr_policy').split(',')]
+                    if len(self.lr_policy) != len(self.epoch_step):
+                        raise ValueError('Length of lr_policy array is not equal to epoch step array')
+                else:
+                    self.lr_policy = ['const' for _ in range(len(self.learning_rate))]
+
+                if parser.has_option(section, 'lr_param'):
+                    self.lr_param = [float(val) for val in parser.get(set, 'lr_param').split(',')]
+                    if len(self.lr_param) != len(self.epoch_step):
+                        raise ValueError('Length of lr_param array is not equal to epoch step array')
+                else:
+                    self.lr_param = [1 for _ in range(len(self.epoch_step))]
+
                 if parser.has_option(section, 'no_boxes'):
                     self.no_boxes = parser.getint(section, 'no_boxes')
                 else:
@@ -336,11 +352,11 @@ class YoloV0(ANN):
                         break
                     if k == len(self.epoch_step) - 1:
                         ind = k
-
+                lr = super().learning_rate(self.learning_rate[ind], g_step, self.lr_param[ind], self.lr_policy[ind])
                 if (g_step + 1) % summ_step == 0:
                     val_t0 = time.time()
                     s = self.sess.run(summary, feed_dict={self.x: imgs, self.y_true: labels,
-                                                          self.ph_learning_rate: self.learning_rate[ind],
+                                                          self.ph_learning_rate: lr,
                                                           self.ph_coord_scale: self.coord_scale[ind],
                                                           self.ph_noobj_scale: self.noobj_scale[ind],
                                                           self.ph_train: True,
@@ -351,7 +367,7 @@ class YoloV0(ANN):
                     summary_writer.flush()
                     loss, preds = self.sess.run([self.loss, self.predictions],
                                                 feed_dict={self.x: imgs, self.y_true: labels,
-                                                           self.ph_learning_rate: self.learning_rate[ind],
+                                                           self.ph_learning_rate: lr,
                                                            self.ph_coord_scale: self.coord_scale[ind],
                                                            self.ph_noobj_scale: self.noobj_scale[ind],
                                                            self.ph_train: False,
@@ -391,7 +407,7 @@ class YoloV0(ANN):
 
                 _, loss = self.sess.run([self.optimizer, self.loss],
                                         feed_dict={self.x: imgs, self.y_true: labels,
-                                                   self.ph_learning_rate: self.learning_rate[ind],
+                                                   self.ph_learning_rate: lr,
                                                    self.ph_coord_scale: self.coord_scale[ind],
                                                    self.ph_noobj_scale: self.noobj_scale[ind],
                                                    self.ph_train: True,

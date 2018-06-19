@@ -1,4 +1,5 @@
 import tensorflow as tf
+import math
 
 
 class ANN:
@@ -134,3 +135,11 @@ class ANN:
             tf.logging.info('   strides: %s' % str(strides))
             tf.logging.info('   padding: %s' % padding)
             return pooling
+
+    def learning_rate(self, lr, g_step, hp, lr_type):
+        if lr_type == 'const':
+            return lr
+        if lr_type == 'exp_rise':
+            return lr * math.exp(hp * g_step)
+        if lr_type == 'exp_decay':
+            return lr * math.exp(-hp * g_step)

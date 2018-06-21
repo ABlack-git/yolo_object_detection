@@ -368,15 +368,8 @@ class YoloV0(ANN):
                     summary_writer.flush()
 
                     if do_test:
-                        preds = self.sess.run(self.predictions,
-                                              feed_dict={self.x: imgs, self.y_true: labels,
-                                                         self.ph_learning_rate: lr,
-                                                         self.ph_coord_scale: self.coord_scale[ind],
-                                                         self.ph_noobj_scale: self.noobj_scale[ind],
-                                                         self.ph_train: False,
-                                                         self.ph_isobj_scale: self.isobj_scale[ind],
-                                                         self.ph_prob_noobj: self.prob_noobj[ind],
-                                                         self.ph_prob_isobj: self.prob_isobj[ind]})
+                        preds = self.sess.run(self.predictions, feed_dict={self.x: imgs, self.y_true: labels,
+                                                                           self.ph_train: False})
 
                         predicted_boxes = self.predictions_to_boxes(preds)
                         predicted_boxes = self.convert_coords(predicted_boxes)
@@ -404,9 +397,9 @@ class YoloV0(ANN):
                         self.log_scalar('t_avg_iou', avg_iou, summary_writer, 'Statistics')
                         val_tf = time.time() - val_t0
                         tf.logging.info('Statistics on training set')
-                        tf.logging.info('Step: %s, loss: %.4f, no_tp: %d, avg_precision: %.3f, '
+                        tf.logging.info('Step: %s, no_tp: %d, avg_precision: %.3f, '
                                         'avg_recall %.3f, avg_confidance: %.3f, avg_iou: %.3f, Valiadation time: %.2f'
-                                        % (tf.train.global_step(self.sess, self.global_step), loss, no_tp, avg_prec,
+                                        % (tf.train.global_step(self.sess, self.global_step), no_tp, avg_prec,
                                            avg_recall,
                                            avg_conf, avg_iou, val_tf))
 
@@ -576,7 +569,6 @@ class YoloV0(ANN):
         indices = np.argsort(preds[:, 4])
         # delete all elements with low confidence
         indices = np.delete(indices, np.where(preds[indices, 4] <= self.nms_threshold))
-        print(indices)
         picked = []
         while len(indices) > 0:
             i = indices[len(indices) - 1]

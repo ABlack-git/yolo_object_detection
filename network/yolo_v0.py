@@ -368,13 +368,10 @@ class YoloV0(ANN):
                     summary_writer.flush()
 
                     if do_test:
-                        print(labels)
                         preds = self.sess.run(self.predictions, feed_dict={self.x: imgs, self.ph_train: False})
-
                         predicted_boxes = self.predictions_to_boxes(preds)
                         predicted_boxes = self.convert_coords(predicted_boxes)
                         true_boxes = self.predictions_to_boxes(labels, last_dim_size=5)
-                        print(labels)
                         true_boxes = self.convert_coords(true_boxes)
                         # delete all elements that do not represent boxes
                         tmp = []
@@ -404,7 +401,6 @@ class YoloV0(ANN):
                                         % (tf.train.global_step(self.sess, self.global_step), no_tp, avg_prec,
                                            avg_recall,
                                            avg_conf, avg_iou, val_tf))
-                        print(labels)
 
                 if (i + 1) % 200 == 0 and do_test:
                     self.test_model(self.batch_size)

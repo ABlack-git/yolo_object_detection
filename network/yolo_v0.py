@@ -508,15 +508,15 @@ class YoloV0(ANN):
             raise TypeError
         return self.sess.run(self.predictions, feed_dict={self.x: x, self.ph_train: False})
 
-    def predictions_to_boxes(self, preds, last_dim_size=6):
+    def predictions_to_boxes(self, in_preds, last_dim_size=6):
         """
         Coverts predictions of network to bounding box format.
-        :param preds: Predictions of the network. Shape [batch_size,S*S*5].
+        :param in_preds: Predictions of the network. Shape [batch_size,S*S*5].
         :param last_dim_size: Size of last dimension.
         :return: Returns ALL boxes predicted by the network. Boxes coordinates corespond to pixels.
         Shape of returned tensor is [batch_size, S*S, 5]
         """
-        preds = np.reshape(preds, [self.batch_size, self.grid_size[0] * self.grid_size[1], last_dim_size])
+        preds = np.reshape(in_preds, [self.batch_size, self.grid_size[0] * self.grid_size[1], last_dim_size])
         counter_i = 0
         counter_j = 0
         for i in range(self.grid_size[0] * self.grid_size[1]):

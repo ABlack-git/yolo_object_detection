@@ -518,7 +518,8 @@ class YoloV0(ANN):
         :return: Returns ALL boxes predicted by the network. Boxes coordinates corespond to pixels.
         Shape of returned tensor is [batch_size, S*S, 5]
         """
-        preds = np.reshape(in_preds, [self.batch_size, self.grid_size[0] * self.grid_size[1], last_dim_size])
+        preds = np.copy(in_preds)
+        preds = np.reshape(preds, [self.batch_size, self.grid_size[0] * self.grid_size[1], last_dim_size])
         counter_i = 0
         counter_j = 0
         for i in range(self.grid_size[0] * self.grid_size[1]):

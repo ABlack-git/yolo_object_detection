@@ -368,8 +368,7 @@ class YoloV0(ANN):
                     summary_writer.flush()
 
                     if do_test:
-                        preds = self.sess.run(self.predictions, feed_dict={self.x: imgs, self.y_true: labels,
-                                                                           self.ph_train: False})
+                        preds = self.sess.run(self.predictions, feed_dict={self.x: imgs, self.ph_train: False})
 
                         predicted_boxes = self.predictions_to_boxes(preds)
                         predicted_boxes = self.convert_coords(predicted_boxes)

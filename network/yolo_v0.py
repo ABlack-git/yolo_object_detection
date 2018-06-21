@@ -575,7 +575,8 @@ class YoloV0(ANN):
         """
         indices = np.argsort(preds[:, 4])
         # delete all elements with low confidence
-        indices = np.delete(indices, np.where(preds[indices, 4] <= self.conf_threshold))
+        indices = np.delete(indices, np.where(preds[indices, 4] <= self.nms_threshold))
+        print(indices)
         picked = []
         while len(indices) > 0:
             i = indices[len(indices) - 1]
@@ -583,7 +584,7 @@ class YoloV0(ANN):
             indices = np.delete(indices, i)
             current_box = np.tile(preds[i, :], (len(indices), 1))
             iou = self.iou(current_box, preds[indices, :])
-            indices = np.delete(indices, np.where(iou >= self.nms_threshold))
+            indices = np.delete(indices, np.where(iou >= 0.5))
         return preds[picked, :]
 
     def iou(self, boxes_a, boxes_b):

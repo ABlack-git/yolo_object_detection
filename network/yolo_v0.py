@@ -601,12 +601,13 @@ class YoloV0(ANN):
         union_area = a_area + b_area - inter_area
         return np.divide(inter_area, union_area)
 
-    def convert_coords(self, boxes, nump=True):
+    def convert_coords(self, in_boxes, nump=True):
         """
         Converts center based coordinates to coordinates of two corners
-        :param boxes: Array of boxes with shape [bacth_size, S*S, 5]
+        :param in_boxes: Array of boxes with shape [bacth_size, S*S, 5]
         :return: Boxes with converted coordinates
         """
+        boxes = in_boxes
         if nump:
             boxes[:, :, 0] = boxes[:, :, 0] - np.round(boxes[:, :, 2] / 2)
             boxes[:, :, 1] = boxes[:, :, 1] - np.round(boxes[:, :, 3] / 2)

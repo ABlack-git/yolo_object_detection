@@ -368,6 +368,7 @@ class YoloV0(ANN):
                     summary_writer.flush()
 
                     if do_test:
+                        print(labels)
                         preds = self.sess.run(self.predictions, feed_dict={self.x: imgs, self.ph_train: False})
 
                         predicted_boxes = self.predictions_to_boxes(preds)
@@ -395,6 +396,7 @@ class YoloV0(ANN):
                         self.log_scalar('t_avg_conf', avg_conf, summary_writer, 'Statistics')
                         self.log_scalar('t_avg_iou', avg_iou, summary_writer, 'Statistics')
                         val_tf = time.time() - val_t0
+                        print(labels)
                         tf.logging.info('Statistics on training set')
                         tf.logging.info('Step: %s, no_tp: %d, avg_precision: %.3f, '
                                         'avg_recall %.3f, avg_confidance: %.3f, avg_iou: %.3f, Valiadation time: %.2f'

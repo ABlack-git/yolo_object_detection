@@ -404,6 +404,7 @@ class YoloV0(ANN):
                                         % (tf.train.global_step(self.sess, self.global_step), no_tp, avg_prec,
                                            avg_recall,
                                            avg_conf, avg_iou, val_tf))
+                        print(labels)
 
                 if (i + 1) % 200 == 0 and do_test:
                     self.test_model(self.batch_size)

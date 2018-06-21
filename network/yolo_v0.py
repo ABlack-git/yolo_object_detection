@@ -607,8 +607,9 @@ class YoloV0(ANN):
         :param in_boxes: Array of boxes with shape [bacth_size, S*S, 5]
         :return: Boxes with converted coordinates
         """
-        boxes = in_boxes
+
         if nump:
+            boxes = np.copy(in_boxes)
             boxes[:, :, 0] = boxes[:, :, 0] - np.round(boxes[:, :, 2] / 2)
             boxes[:, :, 1] = boxes[:, :, 1] - np.round(boxes[:, :, 3] / 2)
             boxes[:, :, 2] = boxes[:, :, 2] + boxes[:, :, 0]
@@ -616,6 +617,7 @@ class YoloV0(ANN):
             return boxes
         else:
             boxes_ret = []
+            boxes = in_boxes[:, :, :]
             for item_n, batch_item in enumerate(boxes):
                 batch_item[:, 0] = batch_item[:, 0] - np.round(batch_item[:, 2] / 2)
                 batch_item[:, 1] = batch_item[:, 1] - np.round(batch_item[:, 3] / 2)

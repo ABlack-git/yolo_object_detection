@@ -36,6 +36,7 @@ class YoloV0(ANN):
         self.batch_size = None
         self.learning_rate = None
         self.nms_threshold = None
+        self.conf_threshold = 0.5
         self.no_boxes = 1
         self.optimizer_param = None
         self.lr_policy = None
@@ -365,25 +366,32 @@ class YoloV0(ANN):
                                                           self.ph_prob_isobj: self.prob_isobj[ind]})
                     summary_writer.add_summary(s, tf.train.global_step(self.sess, self.global_step))
                     summary_writer.flush()
-                    loss, preds = self.sess.run([self.loss, self.predictions],
-                                                feed_dict={self.x: imgs, self.y_true: labels,
-                                                           self.ph_learning_rate: lr,
-                                                           self.ph_coord_scale: self.coord_scale[ind],
-                                                           self.ph_noobj_scale: self.noobj_scale[ind],
-                                                           self.ph_train: False,
-                                                           self.ph_isobj_scale: self.isobj_scale[ind],
-                                                           self.ph_prob_noobj: self.prob_noobj[ind],
-                                                           self.ph_prob_isobj: self.prob_isobj[ind]})
+
                     if do_test:
-                        b_preds = self.predictions_to_boxes(preds)
-                        b_true = self.predictions_to_boxes(labels, last_dim_size=5)
-                        b_true = self.convert_coords(b_true)
+                        preds = self.sess.run(self.predictions,
+                                              feed_dict={self.x: imgs, self.y_true: labels,
+                                                         self.ph_learning_rate: lr,
+                                                         self.ph_coord_scale: self.coord_scale[ind],
+                                                         self.ph_noobj_scale: self.noobj_scale[ind],
+                                                         self.ph_train: False,
+                                                         self.ph_isobj_scale: self.isobj_scale[ind],
+                                                         self.ph_prob_noobj: self.prob_noobj[ind],
+                                                         self.ph_prob_isobj: self.prob_isobj[ind]})
+
+                        predicted_boxes = self.predictions_to_boxes(preds)
+                        predicted_boxes = self.convert_coords(predicted_boxes)
+                        true_boxes = self.predictions_to_boxes(labels, last_dim_size=5)
+                        true_boxes = self.convert_coords(true_boxes)
+                        # delete all elements that do not represent boxes
                         tmp = []
-                        for b_img in b_true:
+                        for b_img in true_boxes:
                             tmp.append(np.delete(b_img, np.where(b_img[:, 4] != 1.0), axis=0))
-                        b_true = tmp
-                        b_preds = self.nms(b_preds)
-                        stats = self.compute_stats(b_preds, b_true)
+                        true_boxes = tmp
+                        tmp = []
+                        for boxes in predicted_boxes:
+                            tmp.append(self.non_max_suppression(boxes))
+                        predicted_boxes = tmp
+                        stats = self.compute_stats(predicted_boxes, true_boxes)
                         tmp = np.sum(stats, axis=0)
                         no_tp = tmp[0]
                         avg_prec = tmp[1] / len(stats)
@@ -557,6 +565,26 @@ class YoloV0(ANN):
                 batch_i = np.delete(batch_i, np.where(ious >= 0.5))
             picked.append(np.array(batch_picked))
         return picked
+
+    def non_max_suppression(self, preds):
+        """
+        Non-maximum suppression algorithm.
+        :param preds: np array of boxes in form of top left and bottom right coordinates predicted by the network with
+        shape [grid_w*grid_h, 5]
+        :return: Boxes per image that correspond to predictions. Can return empty list.
+        """
+        indices = np.argsort(preds[:, 4])
+        # delete all elements with low confidence
+        indices = np.delete(indices, np.where(preds[indices, 4] <= self.conf_threshold))
+        picked = []
+        while len(indices) > 0:
+            i = indices[-1]
+            picked.append(i)
+            indices = np.delete(indices, i)
+            current_box = np.tile(preds[i, :], (len(indices), 1))
+            iou = self.iou(current_box, preds[indices, :])
+            indices = np.delete(indices, np.where(iou >= self.nms_threshold))
+        return preds[picked, :]
 
     def iou(self, boxes_a, boxes_b):
         """

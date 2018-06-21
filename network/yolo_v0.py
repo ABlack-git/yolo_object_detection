@@ -581,7 +581,7 @@ class YoloV0(ANN):
         while len(indices) > 0:
             i = indices[len(indices) - 1]
             picked.append(i)
-            indices = np.delete(indices, i)
+            indices = np.delete(indices, len(indices) - 1)
             current_box = np.tile(preds[i, :], (len(indices), 1))
             iou = self.iou(current_box, preds[indices, :])
             indices = np.delete(indices, np.where(iou >= 0.5))

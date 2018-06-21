@@ -374,6 +374,7 @@ class YoloV0(ANN):
                         predicted_boxes = self.predictions_to_boxes(preds)
                         predicted_boxes = self.convert_coords(predicted_boxes)
                         true_boxes = self.predictions_to_boxes(labels, last_dim_size=5)
+                        print(labels)
                         true_boxes = self.convert_coords(true_boxes)
                         # delete all elements that do not represent boxes
                         tmp = []
@@ -396,7 +397,7 @@ class YoloV0(ANN):
                         self.log_scalar('t_avg_conf', avg_conf, summary_writer, 'Statistics')
                         self.log_scalar('t_avg_iou', avg_iou, summary_writer, 'Statistics')
                         val_tf = time.time() - val_t0
-                        print(labels)
+
                         tf.logging.info('Statistics on training set')
                         tf.logging.info('Step: %s, no_tp: %d, avg_precision: %.3f, '
                                         'avg_recall %.3f, avg_confidance: %.3f, avg_iou: %.3f, Valiadation time: %.2f'

@@ -334,6 +334,7 @@ class YoloV0(ANN):
         ts = DatasetGenerator(training_set[0], training_set[1], self.img_size, self.grid_size, self.no_boxes,
                               sqrt=self.sqrt)
         save_path = os.path.join(self.save_path, self.model_version)
+        start_step=tf.train.global_step(self.sess, self.global_step)
         if valid_set is not None:
             vs = DatasetGenerator(valid_set[0], valid_set[1], self.img_size, self.grid_size, self.no_boxes,
                                   sqrt=self.sqrt)
@@ -353,7 +354,8 @@ class YoloV0(ANN):
                         break
                     if k == len(self.epoch_step) - 1:
                         ind = k
-                lr = super().learning_rate(self.learning_rate[ind], g_step, self.lr_param[ind], self.lr_policy[ind])
+                lr = super().learning_rate(self.learning_rate[ind], g_step, self.lr_param[ind], self.lr_policy[ind],
+                                           start_step)
                 if (g_step + 1) % summ_step == 0:
                     val_t0 = time.time()
                     s = self.sess.run(summary, feed_dict={self.x: imgs, self.y_true: labels,

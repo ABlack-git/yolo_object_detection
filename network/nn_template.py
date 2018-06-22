@@ -136,10 +136,10 @@ class ANN:
             tf.logging.info('   padding: %s' % padding)
             return pooling
 
-    def learning_rate(self, lr, g_step, hp, lr_type):
+    def learning_rate(self, lr, g_step, hp, lr_type, offset=0):
         if lr_type == 'const':
             return lr
         if lr_type == 'exp_rise':
-            return lr * math.exp(hp * g_step)
+            return lr * math.exp(hp * (g_step-offset))
         if lr_type == 'exp_decay':
-            return lr * math.exp(-hp * g_step)
+            return lr * math.exp(-hp * (g_step-offset))

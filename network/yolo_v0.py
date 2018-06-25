@@ -523,7 +523,7 @@ class YoloV0(ANN):
         Shape of returned tensor is [batch_size, S*S, 5]
         """
         preds = np.copy(in_preds)
-        preds = np.reshape(preds, [self.batch_size, self.grid_size[0] * self.grid_size[1], last_dim_size])
+        preds = np.reshape(preds, [len(preds), self.grid_size[0] * self.grid_size[1], last_dim_size])
         counter_i = 0
         counter_j = 0
         for i in range(self.grid_size[0] * self.grid_size[1]):

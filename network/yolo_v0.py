@@ -603,7 +603,7 @@ class YoloV0(ANN):
         inter_area = np.multiply(np.maximum((x_b - x_a + 1), 0), np.maximum((y_b - y_a + 1), 0))
         a_area = np.multiply(boxes_a[:, 2] - boxes_a[:, 0] + 1, boxes_a[:, 3] - boxes_a[:, 1] + 1)
         b_area = np.multiply(boxes_b[:, 2] - boxes_b[:, 0] + 1, boxes_b[:, 3] - boxes_b[:, 1] + 1)
-        union_area = a_area + b_area - inter_area
+        union_area = np.maximum(a_area + b_area - inter_area, 1)
         return np.divide(inter_area, union_area)
 
     def convert_coords(self, in_boxes, nump=True):

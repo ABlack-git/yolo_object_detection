@@ -56,7 +56,7 @@ def show_images_with_boxes(cfg, testing_set, path_to_parameters, draw_centre=Tru
         t_read = time.time() - t0
         img = utils.resize_img(img, net.img_size[1], net.img_size[0])
         t_resize = time.time() - t_read
-        preds = net.get_predictions(img)
+        preds = net.get_predictions([img])
         t_preds = time.time() - t_resize
         if draw_centre:
             pass

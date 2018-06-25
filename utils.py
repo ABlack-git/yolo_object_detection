@@ -57,6 +57,12 @@ def prediction_to_boxes(labels, grid_size, img_size, o_img_size):
 
 
 def iou(boxes_a, boxes_b):
+    """
+    Computes intersection over union of boxes_a and boxes_b
+    :param boxes_a:
+    :param boxes_b:
+    :return:
+    """
     x_a = np.maximum(boxes_a[:, 0], boxes_b[:, 0])
     y_a = np.maximum(boxes_a[:, 1], boxes_b[:, 1])
     x_b = np.minimum(boxes_a[:, 2], boxes_b[:, 2])
@@ -76,6 +82,27 @@ def list_of_images(path):
         if not img.startswith('.'):
             imgs.append(img)
     return imgs
+
+
+def compute_stats(preds, true_boxes):
+    stats = []
+    ious = np.zeros(len(preds), len(true_boxes))
+    for pred_index, pred_box in enumerate(preds):
+        # compute iou of one predicted boxes with all ground truth boxes
+        ious[pred_index, :] = iou(np.tile(pred_box, [len(true_boxes), 1]), true_boxes)
+
+    # true positives
+    tp = [-1 for _ in range(len(true_boxes))]
+
+    for true_index in range(len(true_boxes)):
+        max_iou = -1
+        assign_pred = -1
+        for pred_index in range(len(preds)):
+            if ious[pred_index, true_index] >= 0.5:
+                if tp[true_index] == -1:
+                    if ious[pred_index, true_index] > max_iou:
+                        max_iou = 0
+    pass
 
 
 def resize_img(img, image_h, image_w):

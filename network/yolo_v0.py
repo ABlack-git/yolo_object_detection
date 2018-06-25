@@ -334,7 +334,7 @@ class YoloV0(ANN):
         ts = DatasetGenerator(training_set[0], training_set[1], self.img_size, self.grid_size, self.no_boxes,
                               sqrt=self.sqrt)
         save_path = os.path.join(self.save_path, self.model_version)
-        start_step=tf.train.global_step(self.sess, self.global_step)
+        start_step = tf.train.global_step(self.sess, self.global_step)
         if valid_set is not None:
             vs = DatasetGenerator(valid_set[0], valid_set[1], self.img_size, self.grid_size, self.no_boxes,
                                   sqrt=self.sqrt)
@@ -506,7 +506,13 @@ class YoloV0(ANN):
     def get_predictions(self, x):
         if x is None:
             raise TypeError
-        return self.sess.run(self.predictions, feed_dict={self.x: x, self.ph_train: False})
+        preds = self.sess.run(self.predictions, feed_dict={self.x: x, self.ph_train: False})
+        preds = self.predictions_to_boxes(preds)
+        ret = []
+        for img in preds:
+            img = self.convert_coords(img)
+            ret.append(self.non_max_suppression(img))
+        return ret
 
     def predictions_to_boxes(self, in_preds, last_dim_size=6):
         """

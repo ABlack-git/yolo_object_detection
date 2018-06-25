@@ -59,7 +59,7 @@ class DatasetGenerator:
             img = cv2.resize(img, (self.image_w, self.image_h), interpolation=cv2.INTER_AREA)
         return img
 
-    def resize_and_adjust_labels(self, orgn_size, boxes):
+    def resize_and_adjust_labels(self, orgn_size, boxes, resize_only=False):
         label = np.zeros(5 * self.no_boxes * self.grid_m * self.grid_n)
         if boxes is None:
             return label
@@ -72,6 +72,9 @@ class DatasetGenerator:
             boxes[:, 1] = np.round(boxes[:, 1] * h_ratio)
             boxes[:, 2] = np.round(boxes[:, 2] * w_ratio)
             boxes[:, 3] = np.round(boxes[:, 3] * h_ratio)
+
+        if resize_only:
+            return boxes
 
         for ind, box in enumerate(boxes):
             # calculate coordinates of cell
@@ -99,7 +102,7 @@ class DatasetGenerator:
     def get_number_of_batches(self, batch_size):
         return int(np.floor(len(self.data_labels) / batch_size))
 
-    def get_minibatch(self, batch_size):
+    def get_minibatch(self, batch_size, resize_only=False):
         self.reshuffle()
         images = []
         labels = []
@@ -114,10 +117,7 @@ class DatasetGenerator:
             # resize img
             img = self.resize_img(img)
             # resize and adujst labels
-            try:
-                boxes = self.resize_and_adjust_labels((height, width), boxes)
-            except IndexError:
-                print('In %s' % (self.data_imgs[counter]))
+            boxes = self.resize_and_adjust_labels((height, width), boxes, resize_only)
             images.append(img)
             labels.append(boxes)
             counter += 1

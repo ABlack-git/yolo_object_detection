@@ -66,14 +66,14 @@ class YoloV01(YoloV0):
                 self.loss = tf.add(isobj_loss, noobj_loss, name='total_loss')
                 self.summary_list.append(tf.summary.scalar('total_loss', self.loss))
 
-    def optimize(self, epochs, sum_path):
+    def optimize(self, no_epochs, sum_path):
         now = datetime.datetime.now()
         summary_folder = '%d_%d_%d__%d-%d' % (now.day, now.month, now.year, now.hour, now.minute)
         summary_writer = tf.summary.FileWriter(os.path.join(sum_path, summary_folder), graph=tf.get_default_graph())
         summary = tf.summary.merge_all()
         tf.logging.info(
             'Starting to train model. Current global step is %s' % tf.train.global_step(self.sess, self.global_step))
-        for _ in range(epochs):
+        for _ in range(no_epochs):
             batch = self.training_set.get_minibatch(self.batch_size)
             no_batches = self.training_set.get_number_of_batches(self.batch_size)
             for i in range(no_batches):

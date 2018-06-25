@@ -8,7 +8,7 @@ class YoloSmall(YoloV0):
     def __init__(self, grid_size, img_size, params, restore=False):
         super(YoloSmall, self).__init__(grid_size, img_size, params, restore=restore)
 
-    def inference(self, x):
+    def init_network(self, x):
         if not self.predictions:
             act_param = {'type': 'leaky', 'param': 0.1, 'write_summary': True}
             conv1 = super().create_conv_layer(x, [4, 4, 3, 16], 'Conv_1', [1, 2, 2, 1], activation=True, pooling=True,
@@ -48,7 +48,7 @@ class YoloSmallPretrain(YoloV01):
     def __init__(self, grid_size, img_size, params, restore=False):
         super(YoloSmallPretrain, self).__init__(grid_size, img_size, params, restore=restore)
 
-    def inference(self, x):
+    def init_network(self, x):
         if not self.predictions:
             act_param = {'type': 'leaky', 'param': 0.1, 'write_summary': True}
             conv1 = super().create_conv_layer(x, [4, 4, 3, 16], 'Conv_1', [1, 2, 2, 1], activation=True, pooling=True,

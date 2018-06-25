@@ -2,12 +2,11 @@ import os
 import random
 import cv2
 import numpy as np
-import time
 
 
 class DatasetGenerator:
 
-    def __init__(self, img_dir, labels_dir, img_size, grid_size, no_boxes, shuffle=True):
+    def __init__(self, img_dir, labels_dir, img_size, grid_size, no_boxes, shuffle=True, sqrt=True):
         self.img_dir = img_dir
         self.shuffle = shuffle
         self.labels_dir = labels_dir
@@ -21,6 +20,7 @@ class DatasetGenerator:
         self.no_boxes = no_boxes
         self.grid_w = self.image_w / self.grid_n
         self.grid_h = self.image_h / self.grid_m
+        self.sqrt = sqrt
 
     def get_imgs(self):
         imgs = []
@@ -84,16 +84,16 @@ class DatasetGenerator:
             # calculate index of cell in label vector
             k = int(5 * self.no_boxes * ((j + 1) * self.grid_n - (self.grid_n - i)))
             for box_n in range(self.no_boxes):
-                try:
-                    label[k + 5 * box_n] = box[0] / self.grid_w - i
-                    label[k + 1 + 5 * box_n] = box[1] / self.grid_h - j
-                    label[k + 2 + 5 * box_n] = np.sqrt(box[2]) / self.image_w
-                    label[k + 3 + 5 * box_n] = np.sqrt(box[3]) / self.image_h
-                    label[k + 4 + 5 * box_n] = 1
-                except IndexError:
-                    print('k: %d, i: %.1f, j: %.1f, box_w: %f, box_h: %f, labels_size %s' % (
-                        k, i, j, box[0], box[1], str(np.shape(label))))
-                    raise IndexError
+                label[k + 5 * box_n] = box[0] / self.grid_w - i
+                label[k + 1 + 5 * box_n] = box[1] / self.grid_h - j
+                if self.sqrt:
+                    label[k + 2 + 5 * box_n] = np.sqrt(box[2] / self.image_w)
+                    label[k + 3 + 5 * box_n] = np.sqrt(box[3] / self.image_h)
+                else:
+                    label[k + 2 + 5 * box_n] = box[2] / self.image_w
+                    label[k + 3 + 5 * box_n] = box[3] / self.image_h
+                label[k + 4 + 5 * box_n] = 1
+
         return label
 
     def get_number_of_batches(self, batch_size):
@@ -127,11 +127,6 @@ class DatasetGenerator:
                 empty = True
 
             if counter % batch_size == 0:
-                batch_counter += 1
-                # print('Counter is %d' % counter)
-                # print('Batch number %d has been loaded' % batch_counter)
-                # yield images, labels
-                # yield np.array(images, dtype=np.int), np.array(labels, dtype=np.float32)
                 yield images, np.array(labels, dtype=np.float32)
                 del images
                 del labels

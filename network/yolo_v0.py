@@ -5,23 +5,15 @@ import os
 import datetime
 import numpy as np
 import time
+import configparser
 
 
 class YoloV0(ANN):
 
-    def __init__(self, grid_size, img_size, params=None, restore=False):
-        """
-        :param grid_size: Size of grid
-        :param img_size: Size of input image
-        :param params: loss_scale, training_set_imgs, training_set_labels, batch_size, learning_rate, optimizer,
-        threshold
-        :param restore: Boolean. True if model should be restored from saved parameters. False if new model should be
-        created
-        """
-        self.params = params
+    def __init__(self, cfg):
         self.set_logger_verbosity()
         # Graph elements and tensorflow functions
-        super(YoloV0, self).__init__()
+        super(YoloV0, self).__init__(cfg)
         self.optimizer = None
         self.sess = None
         self.saver = None
@@ -33,56 +25,38 @@ class YoloV0(ANN):
         self.ph_prob_noobj = None
         self.ph_prob_isobj = None
         # Model parameters
-        if params is None:
-            params = {'coord_scale': 1,
-                      'noobj_scale': 0.01,
-                      'isobj_scale': 1,
-                      'prob_noobj': 0.01,
-                      'prob_isobj': 0.01,
-                      'training_set_imgs': None,
-                      'training_set_labels': None,
-                      'testing_set_imgs': None,
-                      'testing_set_labels': None,
-                      'batch_size': 10,
-                      'learning_rate': 0.01,
-                      'optimizer': 'SGD',
-                      'opt_para': None,
-                      'threshold': 0.3,
-                      'save_path': 'CheckPoints'}
-        self.restored = False
+        self.grid_size = None
+        self.img_size = None
+        self.epoch_step = None
+        self.coord_scale = None
+        self.noobj_scale = None
+        self.isobj_scale = None
+        self.prob_noobj = None
+        self.prob_isobj = None
+        self.batch_size = None
+        self.learning_rate = None
+        self.nms_threshold = None
+        self.conf_threshold = 0.5
         self.no_boxes = 1
-        self.grid_size = grid_size
-        self.img_size = img_size
-        self.coord_scale = params.get('coord_scale')
-        self.noobj_scale = params.get('noobj_scale')
-        self.isobj_scale = params.get('isobj_scale')
-        self.prob_noobj = params.get('prob_noobj')
-        self.prob_isobj = params.get('prob_isobj')
-        self.batch_size = params.get('batch_size')
-        self.learning_rate = params.get('learning_rate')
-        self.nms_threshold = params.get('threshold')
-        # Data sets
-        if params.get('training_set_imgs') is not None:
-            self.training_set = DatasetGenerator(params.get('training_set_imgs'), params.get('training_set_labels'),
-                                                 self.img_size, grid_size, 1)
-        self.valid_set = None
-        if params.get('testing_set_imgs') is not None:
-            self.test_set = DatasetGenerator(params.get('testing_set_imgs'), params.get('testing_set_labels'),
-                                             self.img_size,
-                                             grid_size, 1)
-        self.save_path = params.get('save_path')
+        self.optimizer_param = None
+        self.lr_policy = None
+        self.lr_param = None
+        # strings
+        self.load_path = ''
+        self.optimizer_type = ''
+        self.model_version = ''
+        self.summary_path = ''
+        self.save_path = ''
+        # bools
+        self.restored = False
+        self.restore_bool = False
+        self.write_grads = False
+        self.sqrt = True
         # Model initialization
         self.open_sess()
+        self.__create_network()
 
-        if not restore:
-            self.__create_network(params)
-        else:
-            pass
-
-    def __create_network(self, params):
-        self.global_step = tf.Variable(0, name="global_step", trainable=False)
-        self.x = tf.placeholder(tf.float32, [None, self.img_size[1], self.img_size[0], 3], name='Input')
-        self.y_true = tf.placeholder(tf.float32, [None, self.grid_size[0] * self.grid_size[1] * 5], name='GT_input')
+    def __create_network(self):
         self.ph_learning_rate = tf.placeholder(tf.float32, shape=(), name='learning_rate')
         self.ph_coord_scale = tf.placeholder(tf.float32, shape=(), name='coord_scale')
         self.ph_noobj_scale = tf.placeholder(tf.float32, shape=(), name='noobj_scale')
@@ -90,18 +64,22 @@ class YoloV0(ANN):
         self.ph_prob_noobj = tf.placeholder(tf.float32, shape=(), name='prob_noobj')
         self.ph_prob_isobj = tf.placeholder(tf.float32, shape=(), name='prob_noobj')
         self.ph_train = tf.placeholder(tf.bool, name='training')
-        self.inference(self.x)
+        self.global_step = tf.Variable(0, name="global_step", trainable=False)
+        self.init_network(self.cfg)
         self.loss_func(self.predictions, self.y_true)
-        self._optimizer(params.get('optimizer'), params.get('opt_param'), write_grads=False)
+        self._optimizer(self.optimizer_type, self.optimizer_param, write_summary=self.write_grads)
+
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver(max_to_keep=10)
+        if self.restore_bool:
+            self.restore(self.load_path)
 
     def loss_func(self, y_pred, y_true):
         if not self.loss:
             with tf.name_scope('Loss_function'):
                 y_pred = tf.reshape(y_pred, [-1, self.grid_size[0] * self.grid_size[1], 6], name='reshape_pred')
                 y_true = tf.reshape(y_true, [-1, self.grid_size[0] * self.grid_size[1], 5], name='reshape_truth')
-                # define name scopes
+                # define name scopes for better representation in tensorboard
                 with tf.variable_scope('is_obj'):
                     is_obj = y_true[:, :, 4]
                 with tf.variable_scope('t_x'):
@@ -136,9 +114,6 @@ class YoloV0(ANN):
                 iou = self.tf_iou(y_true, y_pred)
                 tf.stop_gradient(iou)
                 self.summary_list.append(tf.summary.histogram('IOU', iou))
-                # with tf.name_scope('Confidence'):
-                # confidence = tf.multiply(is_obj, iou, name='confidence')
-                # tf.stop_gradient(confidence)
                 with tf.variable_scope('no_obj'):
                     no_obj = tf.to_float(tf.not_equal(is_obj, 1))
                 # add confidence where object is present
@@ -159,7 +134,6 @@ class YoloV0(ANN):
                 with tf.variable_scope('Loss'):
                     self.loss = tf.add_n([xy_loss, wh_loss, c_obj_loss, c_noobj_loss, prob_obj_loss, prob_noobj_loss],
                                          name='loss')
-                    # self.loss = tf.add(xy_loss + wh_loss, c_obj_loss + c_noobj_loss, name='loss')
 
                 self.summary_list.append(tf.summary.scalar('xy_loss', xy_loss))
                 self.summary_list.append(tf.summary.scalar('wh_loss', wh_loss))
@@ -170,53 +144,164 @@ class YoloV0(ANN):
                 self.summary_list.append(tf.summary.scalar('Loss', self.loss))
                 self.summary_list.append(tf.summary.histogram('is_obj', is_obj))
                 self.summary_list.append(tf.summary.histogram('no_obj', no_obj))
-                # self.summary_list.append(tf.summary.histogram('confidance', confidence))
+        return self.loss
 
-    def inference(self, x):
-        if not self.predictions:
-            act_param = {'type': 'leaky', 'param': 0.1, 'write_summary': True}
-            conv1 = super().create_conv_layer(x, [3, 3, 3, 16], 'Conv_1', [1, 1, 1, 1], activation=True, pooling=True,
-                                              act_param=act_param, weight_init='Xavier', batch_norm=True,
-                                              trainable=True)
+    def init_network(self, cfg):
+        parser = configparser.ConfigParser()
+        parser.read(cfg)
+        last_out = None
+        for section in parser.sections():
+            if section == 'PARAMETERS':
+                # mandatory parameters
+                self.grid_size = [int(val) for val in parser.get(section, 'grid_size').split(',')]
+                self.img_size = [int(val) for val in parser.get(section, 'img_size').split(',')]
+                self.x = tf.placeholder(tf.float32, [None, self.img_size[1], self.img_size[0], 3], name='Input')
+                last_out = self.x
+                self.y_true = tf.placeholder(tf.float32, [None, self.grid_size[0] * self.grid_size[1] * 5],
+                                             name='labels')
+                self.epoch_step = [int(val) for val in parser.get(section, 'epoch_step').split(',')]
+                self.learning_rate = [float(val) for val in parser.get(section, 'learning_rate').split(',')]
+                self.coord_scale = [float(val) for val in parser.get(section, 'coord_scale').split(',')]
+                self.noobj_scale = [float(val) for val in parser.get(section, 'noobj_scale').split(',')]
+                self.isobj_scale = [float(val) for val in parser.get(section, 'isobj_scale').split(',')]
+                self.prob_noobj = [float(val) for val in parser.get(section, 'prob_noobj').split(',')]
+                self.prob_isobj = [float(val) for val in parser.get(section, 'prob_isobj').split(',')]
+                if len(self.learning_rate) != len(self.epoch_step):
+                    raise ValueError('Length of learning rate array is not equal to epoch step array')
+                if len(self.coord_scale) != len(self.epoch_step):
+                    raise ValueError('Length of coord scale array is not equal to epoch step array')
+                if len(self.noobj_scale) != len(self.epoch_step):
+                    raise ValueError('Length of noobj scale array is not equal to epoch step array')
+                if len(self.isobj_scale) != len(self.epoch_step):
+                    raise ValueError('Length of isobj scale array is not equal to epoch step array')
+                if len(self.prob_noobj) != len(self.epoch_step):
+                    raise ValueError('Length of prob noobj array is not equal to epoch step array')
+                if len(self.prob_isobj) != len(self.epoch_step):
+                    raise ValueError('Length of prob isobj array is not equal to epoch step array')
+                self.nms_threshold = parser.getfloat(section, 'nms_threshold')
+                self.batch_size = parser.getint(section, 'batch_size')
+                self.summary_path = parser.get(section, 'summary_path')
+                self.model_version = parser.get(section, 'model_version')
+                self.optimizer_type = parser.get(section, 'optimizer')
+                self.save_path = parser.get(section, 'save_path')
+                # optional
+                if parser.has_option(section, 'lr_policy'):
+                    self.lr_policy = [val for val in parser.get(section, 'lr_policy').split(',')]
+                    if len(self.lr_policy) != len(self.epoch_step):
+                        raise ValueError('Length of lr_policy array is not equal to epoch step array')
+                else:
+                    self.lr_policy = ['const' for _ in range(len(self.learning_rate))]
 
-            conv2 = super().create_conv_layer(conv1, [3, 3, 16, 32], 'Conv_2', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True,
-                                              trainable=True)
+                if parser.has_option(section, 'lr_param'):
+                    self.lr_param = [float(val) for val in parser.get(section, 'lr_param').split(',')]
+                    if len(self.lr_param) != len(self.epoch_step):
+                        raise ValueError('Length of lr_param array is not equal to epoch step array')
+                else:
+                    self.lr_param = [1 for _ in range(len(self.epoch_step))]
 
-            conv3 = super().create_conv_layer(conv2, [3, 3, 32, 64], 'Conv_3', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True,
-                                              trainable=True)
+                if parser.has_option(section, 'no_boxes'):
+                    self.no_boxes = parser.getint(section, 'no_boxes')
+                else:
+                    self.no_boxes = 1
+                if parser.has_option(section, 'optimizer_param'):
+                    self.optimizer_param = parser.getfloat(section, 'optimizer_param')
+                if parser.has_option(section, 'sqrt'):
+                    self.sqrt = parser.getboolean(section, 'sqrt')
+                else:
+                    self.sqrt = True
+                if parser.has_option(section, 'restore'):
+                    self.restore_bool = parser.getboolean(section, 'restore')
+                    if self.restore_bool:
+                        if parser.has_option(section, 'load_path'):
+                            self.load_path = parser.get(section, 'load_path')
+                        else:
+                            self.restore_bool = False
+                            tf.logging.warning('Parameter restore was set to true, but path to weights was not '
+                                               'specified. Load model with load function')
+                    else:
+                        self.restore_bool = False
 
-            conv4 = super().create_conv_layer(conv3, [3, 3, 64, 128], 'Conv_4', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True,
-                                              trainable=True)
+                if parser.has_option(section, 'write_grads'):
+                    self.write_grads = parser.getboolean(section, 'write_grads')
+                else:
+                    self.write_grads = False
 
-            conv5 = super().create_conv_layer(conv4, [3, 3, 128, 256], 'Conv_5', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True,
-                                              trainable=True)
+            elif section.startswith('CONV'):
+                name = section
+                w_shape = [int(val) for val in parser.get(section, 'w_shape').split(',')]
+                batch_norm = parser.getboolean(section, 'batch_norm')
+                weight_init = parser.get(section, 'weight_init')
+                if parser.has_option(section, 'strides'):
+                    strides = [int(val) for val in parser.get(section, 'strides').split(',')]
+                else:
+                    strides = None
+                if parser.has_option(section, 'trainable'):
+                    trainable = parser.getboolean(section, 'trainable')
+                else:
+                    trainable = True
+                self.layers_list[name] = super().create_conv_layer(last_out, w_shape, name, strides=strides,
+                                                                   weight_init=weight_init, batch_norm=batch_norm,
+                                                                   trainable=trainable)
+                last_out = self.layers_list[name]
+            elif section.startswith('ACTIVATION'):
+                name = parser.get(section, 'name')
+                act_type = parser.get(section, 'type')
+                if parser.has_option(section, 'write_summary'):
+                    write_summary = parser.getboolean(section, 'write_summary')
+                else:
+                    write_summary = False
+                params = {}
+                for option, value in parser.items(section):
+                    if option != 'name' and option != 'type' and option != 'name':
+                        params[option] = value
+                self.layers_list[name] = super().create_activation_layer(last_out, act_type, params, name,
+                                                                         write_summary)
+                last_out = self.layers_list[name]
+            elif section.startswith('POOLING'):
+                name = parser.get(section, 'name')
+                pool_type = parser.get(section, 'type')
+                kernel_size = [int(val) for val in parser.get(section, 'kernel_size').split(',')]
+                strides = [int(val) for val in parser.get(section, 'strides').split(',')]
+                padding = parser.get(section, 'padding')
+                if parser.has_option(section, 'write_summary'):
+                    write_summary = parser.getboolean(section, 'write_summary')
+                else:
+                    write_summary = False
+                self.layers_list[name] = super().create_pooling_layer(last_out, pool_type, kernel_size, strides,
+                                                                      padding, name, write_summary)
+                last_out = self.layers_list[name]
 
-            conv6 = super().create_conv_layer(conv5, [3, 3, 256, 512], 'Conv_6', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True)
+            elif section.startswith('FC'):
+                name = section
+                w_shape = [int(val) for val in parser.get(section, 'w_shape').split(',')]
+                batch_norm = parser.getboolean(section, 'batch_norm')
+                weight_init = parser.get(section, 'weight_init')
+                dropout = parser.getboolean(section, 'dropout')
+                if parser.has_option(section, 'dropout_param'):
+                    dropout_param = parser.getfloat(section, 'dropout_param')
+                else:
+                    dropout_param = None
+                if parser.has_option(section, 'trainable'):
+                    trainable = parser.getboolean(section, 'trainable')
+                else:
+                    trainable = True
+                if parser.has_option(section, 'reshape'):
+                    reshape = parser.getint(section, 'reshape')
+                    last_out = tf.reshape(last_out, [-1, reshape])
+                self.layers_list[name] = super().create_fc_layer(last_out, w_shape, name, dropout=dropout,
+                                                                 dropout_param=dropout_param, weight_init=weight_init,
+                                                                 batch_norm=batch_norm, trainable=trainable)
+                last_out = self.layers_list[name]
+            else:
+                raise ValueError('Unknown section %s in the configuration file' % section)
+        self.predictions = last_out
+        return self.predictions
 
-            conv7 = super().create_conv_layer(conv6, [3, 3, 512, 1024], 'Conv_7', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True)
-
-            conv8 = super().create_conv_layer(conv7, [3, 3, 1024, 256], 'Conv_8', [1, 1, 1, 1], activation=True,
-                                              pooling=True, act_param=act_param, weight_init='Xavier', batch_norm=True)
-            # 3x2 is size of a feature map in last conv layer
-            flatten = tf.reshape(conv8, [-1, 3 * 2 * 256])
-            out_dim = self.grid_size[0] * self.grid_size[1] * 6 * self.no_boxes
-            in_dim = 3 * 2 * 256
-            self.predictions = super().create_fc_layer(flatten, [in_dim, out_dim], 'FC_1', activation=False,
-                                                       act_param={'type': 'sigmoid', 'write_summary': False},
-                                                       weight_init='Xavier',
-                                                       batch_norm=False)
-
-    def _optimizer(self, optimizer='Adam', param=None, write_grads=True):
+    def _optimizer(self, optimizer='Adam', param=None, write_summary=True):
         if not self.optimizer:
             with tf.name_scope('Optimizer'):
                 if optimizer == 'Adam':
-                    self.optimizer = tf.train.AdamOptimizer(self.ph_learning_rate)
+                    self.optimizer = tf.train.AdamOptimizer(self.ph_learning_rate, epsilon=0.1)
                     tf.logging.info('Using %s optimizer' % optimizer)
                 elif optimizer == 'SGD':
                     tf.logging.info('Using %s optimizer' % optimizer)
@@ -235,99 +320,123 @@ class YoloV0(ANN):
                 with tf.control_dependencies(update_ops):
                     grads = self.optimizer.compute_gradients(self.loss)
                 self.optimizer = self.optimizer.apply_gradients(grads, global_step=self.global_step, name='optimizer')
-                if write_grads:
+                if write_summary:
                     for i, grad in enumerate(grads):
                         self.summary_list.append(
                             tf.summary.histogram("{}-grad".format(grads[i][1].name.replace(':0', '-0')), grads[i]))
 
-    def optimize(self, epochs, sum_path):
+    def optimize(self, no_epochs, training_set, valid_set, summ_step, do_test=False):
         now = datetime.datetime.now()
+        model_folder = os.path.join(self.summary_path, self.model_version)
         summary_folder = '%d_%d_%d__%d-%d' % (now.day, now.month, now.year, now.hour, now.minute)
-        summary_writer = tf.summary.FileWriter(os.path.join(sum_path, summary_folder), graph=tf.get_default_graph())
+        summary_writer = tf.summary.FileWriter(os.path.join(model_folder, summary_folder), graph=tf.get_default_graph())
         summary = tf.summary.merge_all()
-        tf.logging.info(
-            'Starting to train model. Current global step is %s' % tf.train.global_step(self.sess, self.global_step))
-        for _ in range(epochs):
-            batch = self.training_set.get_minibatch(self.batch_size)
-            no_batches = self.training_set.get_number_of_batches(self.batch_size)
+        ts = DatasetGenerator(training_set[0], training_set[1], self.img_size, self.grid_size, self.no_boxes,
+                              sqrt=self.sqrt)
+        save_path = os.path.join(self.save_path, self.model_version)
+        start_step=tf.train.global_step(self.sess, self.global_step)
+        if valid_set is not None:
+            vs = DatasetGenerator(valid_set[0], valid_set[1], self.img_size, self.grid_size, self.no_boxes,
+                                  sqrt=self.sqrt)
+        tf.logging.info('Starting to train model. Current global step is %s'
+                        % tf.train.global_step(self.sess, self.global_step))
+        for _ in range(no_epochs):
+            batch = ts.get_minibatch(self.batch_size)
+            no_batches = ts.get_number_of_batches(self.batch_size)
             for i in range(no_batches):
                 t_0 = time.time()
                 imgs, labels = next(batch)
                 g_step = tf.train.global_step(self.sess, self.global_step)
-                if g_step % 50 == 0:
+                ind = 0
+                for k, e_step in enumerate(self.epoch_step):
+                    if (g_step / no_batches) < e_step:
+                        ind = k
+                        break
+                    if k == len(self.epoch_step) - 1:
+                        ind = k
+                lr = super().learning_rate(self.learning_rate[ind], g_step, self.lr_param[ind], self.lr_policy[ind],
+                                           start_step)
+                if (g_step + 1) % summ_step == 0:
                     val_t0 = time.time()
                     s = self.sess.run(summary, feed_dict={self.x: imgs, self.y_true: labels,
-                                                          self.ph_learning_rate: self.learning_rate,
-                                                          self.ph_coord_scale: self.coord_scale,
-                                                          self.ph_noobj_scale: self.noobj_scale,
-                                                          self.ph_train: False,
-                                                          self.ph_isobj_scale: self.isobj_scale,
-                                                          self.ph_prob_noobj: self.prob_noobj,
-                                                          self.ph_prob_isobj: self.prob_isobj})
+                                                          self.ph_learning_rate: lr,
+                                                          self.ph_coord_scale: self.coord_scale[ind],
+                                                          self.ph_noobj_scale: self.noobj_scale[ind],
+                                                          self.ph_train: True,
+                                                          self.ph_isobj_scale: self.isobj_scale[ind],
+                                                          self.ph_prob_noobj: self.prob_noobj[ind],
+                                                          self.ph_prob_isobj: self.prob_isobj[ind]})
                     summary_writer.add_summary(s, tf.train.global_step(self.sess, self.global_step))
                     summary_writer.flush()
-                    loss, preds = self.sess.run([self.loss, self.predictions],
-                                                feed_dict={self.x: imgs, self.y_true: labels,
-                                                           self.ph_learning_rate: self.learning_rate,
-                                                           self.ph_coord_scale: self.coord_scale,
-                                                           self.ph_noobj_scale: self.noobj_scale,
-                                                           self.ph_train: False,
-                                                           self.ph_isobj_scale: self.isobj_scale,
-                                                           self.ph_prob_noobj: self.prob_noobj,
-                                                           self.ph_prob_isobj: self.prob_isobj})
-                    print(np.asarray(preds, np.float32))
-                    b_preds = self.predictions_to_boxes(preds)
-                    b_true = self.predictions_to_boxes(labels, num=5)
-                    b_true = self.convert_coords(b_true)
-                    tmp = []
-                    for b_img in b_true:
-                        tmp.append(np.delete(b_img, np.where(b_img[:, 4] != 1.0), axis=0))
-                    b_true = tmp
-                    b_preds = self.nms(b_preds)
-                    stats = self.compute_stats(b_preds, b_true)
-                    tmp = np.sum(stats, axis=0)
-                    no_tp = tmp[0]
-                    avg_prec = tmp[1] / len(stats)
-                    avg_recall = tmp[2] / len(stats)
-                    avg_conf = tmp[3] / len(stats)
-                    avg_iou = tmp[4] / len(stats)
-                    self.log_scalar('t_avg_prec', avg_prec, summary_writer, 'Statistics')
-                    self.log_scalar('t_avg_recall', avg_recall, summary_writer, 'Statistics')
-                    self.log_scalar('t_avg_conf', avg_conf, summary_writer, 'Statistics')
-                    self.log_scalar('t_avg_iou', avg_iou, summary_writer, 'Statistics')
-                    val_tf = time.time() - val_t0
-                    print('Statistics on training set')
-                    print(
-                        'Step: %s, loss: %.4f, no_tp: %d, avg_precision: %.3f, avg_recall %.3f, avg_confidance: %.3f, '
-                        'avg_iou: %.3f, Valiadation time: %.2f'
-                        % (tf.train.global_step(self.sess, self.global_step), loss, no_tp, avg_prec, avg_recall,
-                           avg_conf, avg_iou, val_tf))
-                if (i + 1) % 200 == 0:
-                    self.test_model(self.batch_size)
-                # if i == int(self.training_set.get_number_of_batches(self.batch_size) / 2):
-                #     self.save(self.save_path, 'model')
 
-                self.sess.run([self.optimizer],
-                              feed_dict={self.x: imgs, self.y_true: labels, self.ph_learning_rate: self.learning_rate,
-                                         self.ph_coord_scale: self.coord_scale,
-                                         self.ph_noobj_scale: self.noobj_scale,
-                                         self.ph_train: True,
-                                         self.ph_isobj_scale: self.isobj_scale,
-                                         self.ph_prob_noobj: self.prob_noobj,
-                                         self.ph_prob_isobj: self.prob_isobj})
+                    if do_test:
+                        preds = self.sess.run(self.predictions, feed_dict={self.x: imgs, self.ph_train: False})
+                        predicted_boxes = self.predictions_to_boxes(preds)
+                        predicted_boxes = self.convert_coords(predicted_boxes)
+                        true_boxes = self.predictions_to_boxes(labels, last_dim_size=5)
+                        true_boxes = self.convert_coords(true_boxes)
+                        # delete all elements that do not represent boxes
+                        tmp = []
+                        for b_img in true_boxes:
+                            tmp.append(np.delete(b_img, np.where(b_img[:, 4] != 1.0), axis=0))
+                        true_boxes = tmp
+                        tmp = []
+                        for boxes in predicted_boxes:
+                            tmp.append(self.non_max_suppression(boxes))
+                        predicted_boxes = tmp
+                        stats = self.compute_stats(predicted_boxes, true_boxes)
+                        tmp = np.sum(stats, axis=0)
+                        no_tp = tmp[0]
+                        avg_prec = tmp[1] / len(stats)
+                        avg_recall = tmp[2] / len(stats)
+                        avg_conf = tmp[3] / len(stats)
+                        avg_iou = tmp[4] / len(stats)
+                        self.log_scalar('t_avg_prec', avg_prec, summary_writer, 'Statistics')
+                        self.log_scalar('t_avg_recall', avg_recall, summary_writer, 'Statistics')
+                        self.log_scalar('t_avg_conf', avg_conf, summary_writer, 'Statistics')
+                        self.log_scalar('t_avg_iou', avg_iou, summary_writer, 'Statistics')
+                        val_tf = time.time() - val_t0
+
+                        tf.logging.info('Statistics on training set')
+                        tf.logging.info('Step: %s, no_tp: %d, avg_precision: %.3f, '
+                                        'avg_recall %.3f, avg_confidance: %.3f, avg_iou: %.3f, Valiadation time: %.2f'
+                                        % (tf.train.global_step(self.sess, self.global_step), no_tp, avg_prec,
+                                           avg_recall,
+                                           avg_conf, avg_iou, val_tf))
+
+                if (i + 1) % 200 == 0 and do_test:
+                    self.test_model(self.batch_size)
+
+                _, loss = self.sess.run([self.optimizer, self.loss],
+                                        feed_dict={self.x: imgs, self.y_true: labels,
+                                                   self.ph_learning_rate: lr,
+                                                   self.ph_coord_scale: self.coord_scale[ind],
+                                                   self.ph_noobj_scale: self.noobj_scale[ind],
+                                                   self.ph_train: True,
+                                                   self.ph_isobj_scale: self.isobj_scale[ind],
+                                                   self.ph_prob_noobj: self.prob_noobj[ind],
+                                                   self.ph_prob_isobj: self.prob_isobj[ind]})
                 t_f = time.time() - t_0
-                tf.logging.info('Global step: %s, Batch processed: %d/%d, Time to process batch: %.2f' % (
-                    tf.train.global_step(self.sess, self.global_step), i + 1, no_batches, t_f))
+                epoch = int(g_step / no_batches) + 1
+                tf.logging.info('Global step: %d, epoch: %d, loss: %.3f, Batch processed: %d/%d, '
+                                'Time to process batch: %.2f' % (g_step, epoch, loss, i + 1, no_batches, t_f))
+                tf.logging.info('Learning rate %.2e, coord scale: %.2e, noobj scale: %.2e, is obj scale: %.2e, '
+                                'prob noobj: %.2e, prob is obj: %.2e' % (lr, self.coord_scale[ind],
+                                                                         self.noobj_scale[ind], self.isobj_scale[ind],
+                                                                         self.prob_noobj[ind],
+                                                                         self.prob_isobj[ind]))
             # save every epoch
-            self.save(self.save_path, 'model')
+            self.save(save_path, self.model_version)
 
     def tf_iou(self, y_true, y_pred):
         """
-        Computes IoU with tf functions.
+        Computes IoU using tensorflow functions. As an input this function takes tensors of predictions and ground
+        truth. Data in those tensors is represented in grid cell format and internally converted to conventional
+        bounding box format.
 
         :param y_true: A tensor of size [batch_size, S*S, size>=4].
         :param y_pred: A tensor of size [batch_size, S*S, size>=4].
-        Where S is the number of cells, B number of boxes and
+        Where S is the number of cells.
         4 is the size of last dimension, that corresponds to x_c, y_c, w, h.
         :return: A tensor of size [batch_size, S], where each element is IoU of predicted box with ground truth box.
         """
@@ -350,13 +459,19 @@ class YoloV0(ANN):
 
                 y_tx = (y_true[:, :, 0] + g_i) * self.img_size[0] / self.grid_size[0]
                 y_ty = (y_true[:, :, 1] + g_j) * self.img_size[1] / self.grid_size[1]
-                y_tw = tf.pow(y_true[:, :, 2] * self.img_size[0], 2)
-                y_th = tf.pow(y_true[:, :, 3] * self.img_size[1], 2)
 
                 y_px = (y_pred[:, :, 0] + g_i) * self.img_size[0] / self.grid_size[0]
                 y_py = (y_pred[:, :, 1] + g_j) * self.img_size[1] / self.grid_size[1]
-                y_pw = tf.pow(y_pred[:, :, 2] * self.img_size[0], 2)
-                y_ph = tf.pow(y_pred[:, :, 3] * self.img_size[1], 2)
+                if self.sqrt:
+                    y_pw = tf.pow(y_pred[:, :, 2], 2) * self.img_size[0]
+                    y_ph = tf.pow(y_pred[:, :, 3], 2) * self.img_size[1]
+                    y_tw = tf.pow(y_true[:, :, 2], 2) * self.img_size[0]
+                    y_th = tf.pow(y_true[:, :, 3], 2) * self.img_size[1]
+                else:
+                    y_pw = y_pred[:, :, 2] * self.img_size[0]
+                    y_ph = y_pred[:, :, 3] * self.img_size[1]
+                    y_tw = y_true[:, :, 2] * self.img_size[0]
+                    y_th = y_true[:, :, 3] * self.img_size[1]
             with tf.name_scope('Covert_coords'):
                 x_tl_1 = y_tx - tf.round(y_tw / 2)
                 y_tl_1 = y_ty - tf.round(y_th / 2)
@@ -377,8 +492,8 @@ class YoloV0(ANN):
                 intersection = tf.multiply(tf.maximum(x_br - x_tl + 1, 0), tf.maximum(y_br - y_tl + 1, 0),
                                            name='Intersection')
                 # Compute union area
-                area_1 = (x_br_1 - x_tl_1 + 1) * (y_br_1 - y_tl_1 + 1)
-                area_b = (x_br_2 - x_tl_2 + 1) * (y_br_2 - y_tl_2 + 1)
+                area_1 = tf.maximum((x_br_1 - x_tl_1 + 1) * (y_br_1 - y_tl_1 + 1), 1)
+                area_b = tf.maximum((x_br_2 - x_tl_2 + 1) * (y_br_2 - y_tl_2 + 1), 1)
                 union = tf.subtract(tf.add(area_1, area_b), intersection, name='Union')
 
                 return tf.truediv(intersection, union, name='IoU')
@@ -393,21 +508,27 @@ class YoloV0(ANN):
             raise TypeError
         return self.sess.run(self.predictions, feed_dict={self.x: x, self.ph_train: False})
 
-    def predictions_to_boxes(self, preds, num=6):
+    def predictions_to_boxes(self, in_preds, last_dim_size=6):
         """
         Coverts predictions of network to bounding box format.
-        :param preds: Predictions of the network. Shape [batch_size,S*S*5].
+        :param in_preds: Predictions of the network. Shape [batch_size,S*S*5].
+        :param last_dim_size: Size of last dimension.
         :return: Returns ALL boxes predicted by the network. Boxes coordinates corespond to pixels.
         Shape of returned tensor is [batch_size, S*S, 5]
         """
-        preds = np.reshape(preds, [self.batch_size, self.grid_size[0] * self.grid_size[1], num])
+        preds = np.copy(in_preds)
+        preds = np.reshape(preds, [self.batch_size, self.grid_size[0] * self.grid_size[1], last_dim_size])
         counter_i = 0
         counter_j = 0
         for i in range(self.grid_size[0] * self.grid_size[1]):
             preds[:, i, 0] = np.round((preds[:, i, 0] + counter_i) * self.img_size[0] / self.grid_size[0])
             preds[:, i, 1] = np.round((preds[:, i, 1] + counter_j) * self.img_size[1] / self.grid_size[1])
-            preds[:, i, 2] = np.round(np.power(preds[:, i, 2] * self.img_size[0], 2))
-            preds[:, i, 3] = np.round(np.power(preds[:, i, 3] * self.img_size[1], 2))
+            if self.sqrt:
+                preds[:, i, 2] = np.round(np.power(preds[:, i, 2], 2) * self.img_size[0])
+                preds[:, i, 3] = np.round(np.power(preds[:, i, 3], 2) * self.img_size[1])
+            else:
+                preds[:, i, 2] = np.round(preds[:, i, 2] * self.img_size[0])
+                preds[:, i, 3] = np.round(preds[:, i, 3] * self.img_size[1])
             counter_i += 1
             if (i + 1) % self.grid_size[0] == 0:
                 counter_i = 0
@@ -440,6 +561,26 @@ class YoloV0(ANN):
             picked.append(np.array(batch_picked))
         return picked
 
+    def non_max_suppression(self, preds):
+        """
+        Non-maximum suppression algorithm.
+        :param preds: np array of boxes in form of top left and bottom right coordinates predicted by the network with
+        shape [grid_w*grid_h, 5]
+        :return: Boxes per image that correspond to predictions. Can return empty list.
+        """
+        indices = np.argsort(preds[:, 4])
+        # delete all elements with low confidence
+        indices = np.delete(indices, np.where(preds[indices, 4] <= self.nms_threshold))
+        picked = []
+        while len(indices) > 0:
+            i = indices[len(indices) - 1]
+            picked.append(i)
+            indices = np.delete(indices, len(indices) - 1)
+            current_box = np.tile(preds[i, :], (len(indices), 1))
+            iou = self.iou(current_box, preds[indices, :])
+            indices = np.delete(indices, np.where(iou >= 0.5))
+        return preds[picked, :]
+
     def iou(self, boxes_a, boxes_b):
         """
         Computes IoU.
@@ -459,13 +600,15 @@ class YoloV0(ANN):
         union_area = a_area + b_area - inter_area
         return np.divide(inter_area, union_area)
 
-    def convert_coords(self, boxes, nump=True):
+    def convert_coords(self, in_boxes, nump=True):
         """
         Converts center based coordinates to coordinates of two corners
-        :param boxes: Array of boxes with shape [bacth_size, S*S, 5]
+        :param in_boxes: Array of boxes with shape [bacth_size, S*S, 5]
         :return: Boxes with converted coordinates
         """
+
         if nump:
+            boxes = np.copy(in_boxes)
             boxes[:, :, 0] = boxes[:, :, 0] - np.round(boxes[:, :, 2] / 2)
             boxes[:, :, 1] = boxes[:, :, 1] - np.round(boxes[:, :, 3] / 2)
             boxes[:, :, 2] = boxes[:, :, 2] + boxes[:, :, 0]
@@ -473,6 +616,7 @@ class YoloV0(ANN):
             return boxes
         else:
             boxes_ret = []
+            boxes = in_boxes[:, :, :]
             for item_n, batch_item in enumerate(boxes):
                 batch_item[:, 0] = batch_item[:, 0] - np.round(batch_item[:, 2] / 2)
                 batch_item[:, 1] = batch_item[:, 1] - np.round(batch_item[:, 3] / 2)
@@ -490,13 +634,39 @@ class YoloV0(ANN):
         self.saver.save(self.sess, os.path.join(path, name),
                         global_step=tf.train.global_step(self.sess, self.global_step))
 
+    def graph_summary(self):
+        if not os.path.exists(self.summary_path):
+            os.makedirs(self.summary_path)
+        path = os.path.join(self.summary_path, self.model_version)
+        writer = tf.summary.FileWriter(path, graph=tf.get_default_graph())
+        writer.flush()
+
     def restore(self, path, meta=None, var_names=None):
         if not self.restored:
             if meta is not None:
                 self.saver = tf.train.import_meta_graph(meta)
                 self.saver.restore(self.sess, save_path=path)
+                try:
+                    graph = tf.get_default_graph()
+                    self.x = graph.get_tensor_by_name('Input:0')
+                    self.y_true = graph.get_tensor_by_name('labels:0')
+                    self.predictions = graph.get_tensor_by_name('FC_1/output:0')
+                    self.loss = graph.get_tensor_by_name('Loss_function/Loss/loss:0')
+                    self.optimizer = graph.get_operation_by_name('Optimizer/optimizer')
+                    self.global_step = graph.get_tensor_by_name('global_step:0')
+                    self.ph_train = graph.get_tensor_by_name('training:0')
+                    self.ph_learning_rate = graph.get_tensor_by_name('learning_rate:0')
+                    self.ph_noobj_scale = graph.get_tensor_by_name('noobj_scale:0')
+                    self.ph_coord_scale = graph.get_tensor_by_name('coord_scale:0')
+                    self.ph_isobj_scale = graph.get_tensor_by_name('isobj_scale:0')
+                    # self.saver = tf.train.Saver(max_to_keep=10)
+                    self.restored = True
+                except KeyError as e:
+                    tf.logging.fatal("Restoring was not successful. KeyError exception was raised.")
+                    tf.logging.fatal(e)
+                    exit(1)
             elif path is not None:
-                self.__create_network(self.params)
+                # self.__create_network()
                 variables = None
                 if var_names is not None:
                     graph = tf.get_default_graph()
@@ -506,35 +676,11 @@ class YoloV0(ANN):
             else:
                 tf.logging.info('Restore pass was not specified, exiting.')
                 exit(1)
-            try:
-
-                graph = tf.get_default_graph()
-                self.x = graph.get_tensor_by_name('Input:0')
-                self.y_true = graph.get_tensor_by_name('GT_input:0')
-                self.predictions = graph.get_tensor_by_name('FC_1/output:0')
-                self.loss = graph.get_tensor_by_name('Loss_function/Loss/loss:0')
-                self.optimizer = graph.get_operation_by_name('Optimizer/optimizer')
-                self.global_step = graph.get_tensor_by_name('global_step:0')
-                self.ph_train = graph.get_tensor_by_name('training:0')
-                self.ph_learning_rate = graph.get_tensor_by_name('learning_rate:0')
-                self.ph_noobj_scale = graph.get_tensor_by_name('noobj_scale:0')
-                self.ph_coord_scale = graph.get_tensor_by_name('coord_scale:0')
-                self.ph_isobj_scale = graph.get_tensor_by_name('isobj_scale:0')
-                # self.saver = tf.train.Saver(max_to_keep=10)
-                self.restored = True
-            except KeyError as e:
-                tf.logging.fatal("Restoring was not successful. KeyError exception was raised.")
-                tf.logging.fatal(e)
-                exit(1)
 
     def open_sess(self):
         if not self.sess:
             self.sess = tf.Session()
             self.sess.run(tf.global_variables_initializer())
-
-            # writer = tf.summary.FileWriter(os.path.join('summaries', 'graph'), graph=tf.get_default_graph(),
-            #                                filename_suffix='graph_')
-            # writer.flush()
 
     def close_sess(self):
         self.sess.close()
@@ -598,7 +744,7 @@ class YoloV0(ANN):
 
 
 if __name__ == '__main__':
-    img_size = (720, 480)
-    grid_size = (36, 24)
-    net = YoloV0(grid_size, img_size)
+    cfg_file = 'cfg/model_8l_1.cfg'
+    net = YoloV0(cfg_file)
+    net.graph_summary()
     net.close_sess()

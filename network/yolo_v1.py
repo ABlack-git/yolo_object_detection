@@ -15,7 +15,7 @@ class YoloV1(YOLO):
         self.corrd_scale = scale_1
         self.noobj_scale = scale_2
 
-    def inference(self, x):
+    def init_network(self, x):
         if not self.predictions:
             act_param = {'type': 'leaky', 'param': 0.1}
             conv1 = super().create_conv_layer(x, [3, 3, 3, 16], 'Conv_1', [1, 1, 1, 1], activation=True, pooling=True,

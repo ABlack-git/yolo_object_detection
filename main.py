@@ -6,7 +6,7 @@ import os
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-cfg', action='store', type=str, help='Path to .cfg file.')
-    parser.add_argument('-pp', action='store', dest='weights_path', type=str, help='path to parameters that should be '
+    parser.add_argument('-pp', action='store', type=str, help='path to parameters that should be '
                                                                                    'loaded', default=None)
     parser.add_argument('-epochs', action='store', type=int, help='Number of epochs to process.', default=10)
     parser.add_argument('-timages', action='store', type=str, help='Path to training images.',

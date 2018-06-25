@@ -62,7 +62,7 @@ def show_images_with_boxes(cfg, testing_set, path_to_parameters, draw_centre=Tru
             pass
         if draw_grid:
             utils.draw_grid(img, net.grid_size)
-        utils.draw_bbox(preds, img)
+        utils.draw_bbox(preds[0], img)
         t_draw = time.time() - t_preds
         cv2.imshow(net.model_version, img)
         k = cv2.waitKey(delay)

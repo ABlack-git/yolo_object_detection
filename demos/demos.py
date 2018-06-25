@@ -103,8 +103,9 @@ def fetch_args():
         parser.error("argument -cfg: invalid path to .cfg file.")
     if not os.path.exists(args.images):
         parser.error("argument -images: invalid path to image directory.")
-    if not os.path.exists(args.labels):
-        parser.error("argument -labels: invalid path to labels directory.")
+    if not (args.labels == ''):
+        if not os.path.exists(args.labels):
+            parser.error("argument -labels: invalid path to labels directory.")
     if not os.path.isfile(args.weights + '.data-00000-of-00001'):
         parser.error('argument -weights: invalid path to weights.')
     return args

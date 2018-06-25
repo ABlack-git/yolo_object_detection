@@ -4,6 +4,8 @@ import os
 
 
 def draw_bbox(data, img):
+    if not data:
+        return None
     for rect in data:
         cv2.rectangle(img, (rect[0], rect[1]), (rect[2], rect[3]), (0, 139, 0), 2)
 

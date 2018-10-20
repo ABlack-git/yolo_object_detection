@@ -121,7 +121,7 @@ def main():
     args = parse_args()
     with open(args.demos_cfg, 'r') as file:
         config = json.load(file)
-
+    
     if config['configuration']['modes']['images']:
         show_images_with_boxes(args.net_cfg, config['images'], config['weights'], config['draw_centers'],
                                config['draw_grid'], config['delay'])

@@ -101,6 +101,12 @@ def process_stats(stats):
 def save_stats(stats, path, model_name):
     header = ['Precision', 'Recall', 'AVG_IOU', 'AVG_CONF_TP', 'AVG_CONF_FP', 'Number of TP', 'Number of FP',
               'Number of FN']
+    stats = np.array(stats)
+    tp_ind = np.where(stats[:, 5] != 0)[0]
+    stats[tp_ind, 2] = stats[tp_ind, 2] / stats[tp_ind, 5]
+    stats[tp_ind, 3] = stats[tp_ind, 3] / stats[tp_ind, 5]
+    fp_ind = np.where((stats[:, 6] != 0))
+    stats[fp_ind, 4] = stats[fp_ind, 4] / stats[fp_ind, 6]
     df = pd.DataFrame(stats, columns=header)
     df.to_csv(os.path.join(path, 'stats_{0}.csv'.format(model_name)))
 

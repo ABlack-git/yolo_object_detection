@@ -78,7 +78,7 @@ def resize_boxes(boxes, old_size, new_size):
     return boxes
 
 
-def iou(boxes_a, boxes_b):
+def iou(boxes_a, boxes_b, epsilon=1e-5):
     """
     Computes intersection over union of boxes_a and boxes_b
     :param boxes_a:
@@ -97,5 +97,5 @@ def iou(boxes_a, boxes_b):
     inter_area = np.multiply(np.maximum((x_b - x_a + 1), 0), np.maximum((y_b - y_a + 1), 0))
     a_area = np.multiply(boxes_a[:, 2] - boxes_a[:, 0] + 1, boxes_a[:, 3] - boxes_a[:, 1] + 1)
     b_area = np.multiply(boxes_b[:, 2] - boxes_b[:, 0] + 1, boxes_b[:, 3] - boxes_b[:, 1] + 1)
-    union_area = a_area + b_area - inter_area
+    union_area = a_area + b_area - inter_area + epsilon
     return np.divide(inter_area, union_area)

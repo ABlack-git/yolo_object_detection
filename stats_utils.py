@@ -29,7 +29,7 @@ def compute_stats(pred_boxes, true_boxes, iou_threshold, stats=None):
             continue
 
         if i_boxes.size == 0 and true_boxes[i].size != 0:
-            no_fn = true_boxes[i].size
+            no_fn = len(true_boxes[i])
             stats.append([0, 0, iou_sum, conf_tp_sum, conf_fp_sum, no_tp, no_fp, no_fn])
             continue
 
@@ -102,7 +102,6 @@ def save_stats(stats, path, model_name):
     header = ['Precision', 'Recall', 'AVG_IOU', 'AVG_CONF_TP', 'AVG_CONF_FP', 'Number of TP', 'Number of FP',
               'Number of FN']
     df = pd.DataFrame(stats, columns=header)
-    print(df)
     df.to_csv(os.path.join(path, 'stats_{0}.csv'.format(model_name)))
 
 

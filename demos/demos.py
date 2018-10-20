@@ -38,6 +38,7 @@ def test_model(net_cfg, path_to_parameters, images, labels, iou_threshold):
     print('Average precision: {0[0]}, Average recall: {0[1]}, Average iou: {0[2]}, Average confidence of TP: {0[3]}, '
           'Average confidence of FP: {0[4]}, Total num of TP: {0[5]}, Total num of FP: {0[6]}, '
           'Total num of FN: {0[7]}'.format(final_stats))
+    net.close_sess()
 
 
 def show_images_with_boxes(cfg, testing_set, path_to_parameters, draw_centre=True, draw_grid=False, delay=0,
@@ -75,6 +76,7 @@ def show_images_with_boxes(cfg, testing_set, path_to_parameters, draw_centre=Tru
                 t_read, t_resize, t_preds, t_draw, t_total))
         if k == 27:
             break
+    net.close_sess()
     return compute_time
 
 

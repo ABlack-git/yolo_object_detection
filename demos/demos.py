@@ -33,6 +33,7 @@ def test_model(net, images, labels, iou_threshold, save_stats, path=''):
         stats = su.compute_stats(preds, true_boxes, iou_threshold, stats)
         su.progress_bar(i, num_batches)
     final_stats = su.process_stats(stats)
+    stats.append(final_stats)
     if save_stats:
         su.save_stats(stats, path, net.model_version)
     print('Average precision: {0[0]}, Average recall: {0[1]}, Average iou: {0[2]}, Average confidence of TP: {0[3]}, '

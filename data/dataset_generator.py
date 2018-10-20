@@ -2,40 +2,69 @@ import os
 import random
 import cv2
 import numpy as np
+import json
 
 
 class DatasetGenerator:
 
-    def __init__(self, img_dir, labels_dir, img_size, grid_size, no_boxes, shuffle=True, sqrt=True):
-        self.img_dir = img_dir
-        self.shuffle = shuffle
-        self.labels_dir = labels_dir
+    def __init__(self, cfg):
+        self.cfg = cfg
+        self.img_dir = None
+        self.labels_dir = None
+        self.image_w = None
+        self.image_h = None
+        self.grid_w = None
+        self.grid_h = None
+        self.no_boxes = None
+        self.sqrt = False
+        self.shuffle = False
+        self.data_imgs = []
+        self.data_labels = []
+        self.read_config()
+        self.get_data()
+        self.grid_pw = self.image_w / self.grid_w
+        self.grid_ph = self.image_h / self.grid_h
 
-        self.data_labels = self.get_labels()
-        self.data_imgs = self.get_imgs()
-        self.image_w = img_size[0]
-        self.image_h = img_size[1]
-        self.grid_n = grid_size[0]
-        self.grid_m = grid_size[1]
-        self.no_boxes = no_boxes
-        self.grid_w = self.image_w / self.grid_n
-        self.grid_h = self.image_h / self.grid_m
-        self.sqrt = sqrt
+    def read_config(self):
+        cfg = None
+        if os.path.isfile(self.cfg):
+            with open(self.cfg, 'r') as json_file:
+                cfg = json.load(json_file)
+        else:
+            try:
+                cfg = json.loads(self.cfg)
+            except ValueError as e:
+                print('Inappropriate format of json file ' + str(e) + '. In dataset generator.')
+                exit(1)
 
-    def get_imgs(self):
-        imgs = []
-        for label in self.data_labels:
-            imgs.append(label.replace('.txt', '.jpg'))
-        return imgs
+        self.img_dir = cfg['images']
+        self.labels_dir = cfg['annotations']
+        config = cfg['configuration']
+        self.image_w = config['img_size']['width']
+        self.image_h = config['img_size']['height']
+        self.grid_w = config['grid_size']['width']
+        self.grid_h = config['grid_size']['height']
+        self.no_boxes = config['no_boxes']
+        self.shuffle = config['shuffle']
+        self.sqrt = config['sqrt']
 
-    def get_labels(self):
-        labels = []
-        for file in os.listdir(self.labels_dir):
-            if file.endswith('.txt') and not file.startswith('.'):
-                labels.append(file)
-        if self.shuffle:
-            random.shuffle(labels)
-        return labels
+    def get_data(self):
+        for img_d, lbl_d in zip(self.img_dir, self.labels_dir):
+            self.data_imgs += [os.path.join(img_d, f) for f in os.listdir(img_d) if
+                               f.endswith('.jpg') and not f.startswith('.')]
+            self.data_labels += [os.path.join(lbl_d, f) for f in os.listdir(lbl_d) if
+                                 f.endswith('.txt') and not f.startswith('.')]
+
+        self.data_labels.sort()
+        self.data_imgs.sort()
+        # shuffle dataset
+        self.reshuffle()
+        # check if img correspond to label
+        for a, b in zip(self.data_imgs, self.data_labels):
+            if os.path.basename(a).replace('.jpg', '') != os.path.basename(b).replace('.txt', ''):
+                print('Image has wrong annotation. Annotation file should have same name as image file.')
+                print(a + ' ' + b)
+                exit(1)
 
     def reshuffle(self):
         ziped = list(zip(self.data_imgs, self.data_labels))
@@ -60,7 +89,7 @@ class DatasetGenerator:
         return img
 
     def resize_and_adjust_labels(self, orgn_size, boxes, resize_only=False):
-        label = np.zeros(5 * self.no_boxes * self.grid_m * self.grid_n)
+        label = np.zeros(5 * self.no_boxes * self.grid_ph * self.grid_pw)
         if boxes is None:
             return label
 
@@ -82,13 +111,13 @@ class DatasetGenerator:
                 box[0] = self.image_w - 1
             if box[1] >= self.image_h:
                 box[1] = self.image_h - 1
-            i = np.floor(box[0] / self.grid_w)
-            j = np.floor(box[1] / self.grid_h)
+            i = np.floor(box[0] / self.grid_pw)
+            j = np.floor(box[1] / self.grid_ph)
             # calculate index of cell in label vector
-            k = int(5 * self.no_boxes * ((j + 1) * self.grid_n - (self.grid_n - i)))
+            k = int(5 * self.no_boxes * ((j + 1) * self.grid_w - (self.grid_w - i)))
             for box_n in range(self.no_boxes):
-                label[k + 5 * box_n] = box[0] / self.grid_w - i
-                label[k + 1 + 5 * box_n] = box[1] / self.grid_h - j
+                label[k + 5 * box_n] = box[0] / self.grid_pw - i
+                label[k + 1 + 5 * box_n] = box[1] / self.grid_ph - j
                 if self.sqrt:
                     label[k + 2 + 5 * box_n] = np.sqrt(box[2] / self.image_w)
                     label[k + 3 + 5 * box_n] = np.sqrt(box[3] / self.image_h)
@@ -108,12 +137,11 @@ class DatasetGenerator:
         labels = []
         empty = False
         counter = 0
-        batch_counter = 0
         while True:
             # OpenCV returns image as (height,width,channels), where channels are BGR.
-            img = cv2.imread(os.path.join(self.img_dir, self.data_imgs[counter]), cv2.IMREAD_COLOR)
+            img = cv2.imread(self.data_imgs[counter], cv2.IMREAD_COLOR)
             height, width = img.shape[:2]
-            boxes = self.get_boxes(os.path.join(self.labels_dir, self.data_labels[counter]))
+            boxes = self.get_boxes(self.data_labels[counter])
             # resize img
             img = self.resize_img(img)
             # resize and adujst labels

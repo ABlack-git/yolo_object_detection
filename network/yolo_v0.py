@@ -325,19 +325,17 @@ class YoloV0(ANN):
                         self.summary_list.append(
                             tf.summary.histogram("{}-grad".format(grads[i][1].name.replace(':0', '-0')), grads[i]))
 
-    def optimize(self, no_epochs, training_set, valid_set, summ_step, do_test=False):
+    def optimize(self, no_epochs, summ_step, trainset_cfg, validset_cfg, do_test=False):
         now = datetime.datetime.now()
         model_folder = os.path.join(self.summary_path, self.model_version)
         summary_folder = '%d_%d_%d__%d-%d' % (now.day, now.month, now.year, now.hour, now.minute)
         summary_writer = tf.summary.FileWriter(os.path.join(model_folder, summary_folder), graph=tf.get_default_graph())
         summary = tf.summary.merge_all()
-        ts = DatasetGenerator(training_set[0], training_set[1], self.img_size, self.grid_size, self.no_boxes,
-                              sqrt=self.sqrt)
+        ts = DatasetGenerator(trainset_cfg)
         save_path = os.path.join(self.save_path, self.model_version)
         start_step = tf.train.global_step(self.sess, self.global_step)
-        if valid_set is not None:
-            vs = DatasetGenerator(valid_set[0], valid_set[1], self.img_size, self.grid_size, self.no_boxes,
-                                  sqrt=self.sqrt)
+        if validset_cfg is not None:
+            vs = DatasetGenerator(validset_cfg)
         tf.logging.info('Starting to train model. Current global step is %s'
                         % tf.train.global_step(self.sess, self.global_step))
         for _ in range(no_epochs):
@@ -691,62 +689,6 @@ class YoloV0(ANN):
     def close_sess(self):
         self.sess.close()
         self.sess = None
-
-    def compute_stats(self, pred_boxes, true_boxes):
-        """
-        Computes number of correctly detected objects and their average confidence and average iou with ground truth.
-        Also computes precision and recall. This is all done for every image in the bacth.
-        :param pred_boxes: List of np.arrays of shape [batch_size, ?, 5]
-        :param true_boxes: List of np.arrays [batch_size, ?, 5]
-        :return return lis of size [batch_size, 5]. [no_tp, precision, recall, avg_conf, avg_iou]
-        """
-        statistics = []
-        for img_num, p_boxes in enumerate(pred_boxes):
-            batch_ious = np.zeros([len(p_boxes), len(true_boxes[img_num])])
-            for box_n, box in enumerate(p_boxes):
-                box = np.tile(box, [len(true_boxes[img_num]), 1])
-                batch_ious[box_n, :] = self.iou(box, true_boxes[img_num])
-
-            # true positives
-            tp = [-1 for _ in range(np.shape(batch_ious)[0])]
-            # find  all true positives
-            for t in range(len(true_boxes[img_num])):
-                max_iou = -1
-                p_assign = -1
-                for p in range(np.shape(batch_ious)[0]):
-                    if batch_ious[p, t] >= 0.5:
-                        if tp[p] == -1:
-                            if batch_ious[p, t] > max_iou:
-                                max_iou = batch_ious[p, t]
-                                p_assign = p
-                if p_assign != -1:
-                    tp[p_assign] = t
-            # false negatives
-            fn = [fn for fn in range(len(true_boxes[img_num])) if fn not in tp]
-            # false positives
-            fp = [fp for fp, ind in enumerate(tp) if ind == -1]
-
-            no_fn = float(len(fn))
-            no_fp = float(len(fp))
-            no_tp = 0.0
-            avg_iou = 0.0
-            avg_conf = 0.0
-            for ind, element in enumerate(tp):
-                if element != -1:
-                    avg_iou += batch_ious[ind, element]
-                    avg_conf += p_boxes[ind, 4]
-                    no_tp += 1.0
-
-            avg_iou = avg_iou / no_tp if no_tp > 0 else 0.0
-            avg_conf = avg_conf / no_tp if no_tp > 0 else 0.0
-            precision = no_tp / (no_tp + no_fp) if (no_tp + no_fp) > 0 else 0.0
-            recall = no_tp / (no_tp + no_fn) if (no_tp + no_fn) > 0 else 0.0
-            statistics.append([no_tp, precision, recall, avg_conf, avg_iou])
-
-        return np.asarray(statistics)
-
-    def test_model(self, batch_size):
-        pass
 
 
 if __name__ == '__main__':

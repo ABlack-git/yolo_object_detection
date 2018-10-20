@@ -1,71 +1,61 @@
-from network.yolo_v0_1 import YoloV01
 from network.yolo_v0 import YoloV0
 from data.dataset_generator import DatasetGenerator
 import cv2
-import utils
+import image_utils
+import stats_utils as su
 import os
-import random
 import time
 import argparse
+import json
 
 
-def pretrained_model_test():
-    path = 'E:\Andrew\Dataset\Testing set\Images'
-    imgs = utils.list_of_images(path)
-    random.shuffle(imgs)
-    params = None
-    img_size = (720, 480)
-    grid_size = (36, 24)
-    net = YoloV01(grid_size, img_size, params, restore=True)
-    meta_path = "E:\Andrew\Ann_models\pretrain_model_1_0\weights\model-30600.meta"
-    weight_path = "E:\Andrew\Ann_models\pretrain_model_1_0\weights\model-30600"
-    net.restore(weight_path, meta_path)
-    for img_path in imgs:
-        img = cv2.imread(os.path.join(path, img_path))
-        img = utils.resize_img(img, img_size[1], img_size[0])
-        preds = net.get_predictions([img])
-        coords = net.predictions_to_cells(preds)
-        utils.draw_centers(img, coords)
-        utils.draw_grid(img, grid_size)
-        cv2.imshow('Network test', img)
-        k = cv2.waitKey(0)
-        if k == 27:
-            break
-
-
-def test_model(cfg, testing_set, path_to_parameters):
-    net = YoloV0(cfg)
+def test_model(net_cfg, path_to_parameters, images, labels, iou_threshold):
+    net = YoloV0(net_cfg)
     net.restore(path=path_to_parameters)
-    ts = DatasetGenerator(testing_set[0], testing_set[1], net.img_size, net.grid_size, net.no_boxes, sqrt=net.sqrt)
-    batch = ts.get_minibatch(net.batch_size, resize_only=True)
+    # construct json
+    img_size = {"width": net.img_size[0], "height": net.img_size[1]}
+    grid_size = {"width": net.grid_size[0], "height": net.grid_size[1]}
+    params = {"img_size": img_size, "grid_size": grid_size, "no_boxes": net.no_boxes, "shuffle": True, "sqrt": net.sqrt}
+    conf = {"images": images, "annotations": labels, "configuration": params}
+    conf = json.dumps(conf)
 
+    ts = DatasetGenerator(conf)
+    batch = ts.get_minibatch(net.batch_size, resize_only=True)
+    stats = []
     for _ in range(ts.get_number_of_batches(net.batch_size)):
+        # labels are only resized
         imgs, labels = next(batch)
         preds = net.get_predictions(imgs)
+        # compute stats for batch
+        stats = su.compute_stats(preds, labels, iou_threshold, stats)
+    final_stats = su.process_stats(stats)
+    print('Average precision: {0[0]}, Average recall: {0[1]}, Average iou: {0[2]}, Average confidence of TP: {0[3]}, '
+          'Average confidence of FP: {0[4]}, Total num of TP: {0[5]}, Total num of FP: {0[6]}, '
+          'Total num of FN: {0[7]}'.format(final_stats))
 
 
 def show_images_with_boxes(cfg, testing_set, path_to_parameters, draw_centre=True, draw_grid=False, delay=0,
                            print_time=True):
     net = YoloV0(cfg)
     net.restore(path=path_to_parameters)
-    list_of_imgs = utils.list_of_images(testing_set)
+    list_of_imgs = image_utils.list_of_images(testing_set)
     compute_time = []
     for img_path in list_of_imgs:
         t0_read = time.time()
         img = cv2.imread(os.path.join(testing_set, img_path))
         t_read = time.time() - t0_read
         t0_resize = time.time()
-        img = utils.resize_img(img, net.img_size[1], net.img_size[0])
+        img = image_utils.resize_img(img, net.img_size[1], net.img_size[0])
         t_resize = time.time() - t0_resize
         t0_pred = time.time()
         preds = net.get_predictions([img])
         t_preds = time.time() - t0_pred
         t0_draw = time.time()
-        if draw_centre:
-            pass
+        if draw_centre and preds:
+            image_utils.draw_centers(img, preds)
         if draw_grid:
-            utils.draw_grid(img, net.grid_size)
-        utils.draw_bbox(preds[0], img)
+            image_utils.draw_grid(img, net.grid_size)
+        image_utils.draw_bbox(preds[0], img)
         t_draw = time.time() - t0_draw
         cv2.imshow(net.model_version, img)
         k = cv2.waitKey(delay)
@@ -77,6 +67,18 @@ def show_images_with_boxes(cfg, testing_set, path_to_parameters, draw_centre=Tru
         if k == 27:
             break
     return compute_time
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('net_cfg', action='store', type=str, help='Path to configuration file of the network')
+    parser.add_argument('demos_cfg', action='store', type=str, help='Path to configuration file for demos')
+    args = parser.parse_args()
+    if not os.path.isfile(args.net_cfg):
+        parser.error('Path to configuration file of the network should point to existing file.')
+    if not os.path.isfile(args.demos_cfg):
+        parser.error('Path to configuration file for demos should point to existing file.')
+    return args
 
 
 def fetch_args():
@@ -116,12 +118,17 @@ def fetch_args():
 
 
 def main():
-    args = fetch_args()
-    if args.bboxes:
-        show_images_with_boxes(args.cfg, args.images, args.weights, args.draw_centers, args.draw_grid, args.delay)
+    args = parse_args()
+    with open(args.demos_cfg, 'r') as file:
+        config = json.load(file)
 
-    if args.stats:
-        test_model(args.cfg, [args.images, args.labels], args.weights)
+    if config['configuration']['modes']['images']:
+        show_images_with_boxes(args.net_cfg, config['images'], config['weights'], config['draw_centers'],
+                               config['draw_grid'], config['delay'])
+
+    if config['configuration']['modes']['stats']:
+        test_model(args.net_cfg, config['images'], config['annotations'], config['weights'],
+                   config['configuration']['iou_threshold'])
 
 
 if __name__ == '__main__':

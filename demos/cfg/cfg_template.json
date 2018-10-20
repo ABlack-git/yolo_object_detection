@@ -1,0 +1,27 @@
+{
+  "images": [
+    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Images/MiniDrone",
+    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Images/Okutama",
+    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Images/UFC",
+    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Images/VIRAT"
+  ],
+  "annotations": [
+    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Annotations/MiniDrone",
+    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Annotations/Okutama",
+    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Annotations/UFC",
+    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Annotations/Virat"
+  ],
+  "weights": "",
+  "configuration": {
+    "draw_grid": false,
+    "draw_centers": false,
+    "no_time": false,
+    "delay": 0,
+    "iou_threshold": 0.5,
+    "modes": {
+      "stats": true,
+      "images": true,
+      "video": false
+    }
+  }
+}

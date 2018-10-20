@@ -21,7 +21,7 @@ class ANN:
     def loss_func(self, predictions, labels):
         raise NotImplementedError
 
-    def optimize(self, epochs, training_set, valid_set, summ_step, test):
+    def optimize(self, epochs, summ_step, trainset_cfg, validset_cfg, test):
         raise NotImplementedError
 
     def save(self, path, name):
@@ -140,6 +140,6 @@ class ANN:
         if lr_type == 'const':
             return lr
         if lr_type == 'exp_rise':
-            return lr * math.exp(hp * (g_step-offset))
+            return lr * math.exp(hp * (g_step - offset))
         if lr_type == 'exp_decay':
-            return lr * math.exp(-hp * (g_step-offset))
+            return lr * math.exp(-hp * (g_step - offset))

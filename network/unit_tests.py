@@ -3,8 +3,9 @@ from network.yolo_v0 import YoloV0
 from data.dataset_generator import DatasetGenerator
 import tensorflow as tf
 import numpy as np
-import utils
-import cv2
+import image_utils
+import bbox_utils as bbu
+import stats_utils as su
 
 
 def test_tf_iou():
@@ -88,7 +89,7 @@ def test_nms():
     nms = net.nms(boxes_pred)
     print(nms)
     for batch_n in range(len(boxes_pred)):
-        nms[batch_n] = utils.covert_to_centre(nms[batch_n])
+        nms[batch_n] = image_utils.covert_to_centre(nms[batch_n])
         print(nms[batch_n])
 
 
@@ -199,6 +200,23 @@ def test_io():
     print(stats)
     print(np.shape(stats))
     net.close_sess()
+
+
+def try_com_stats():
+    preds = [np.array([[2518, 713, 39, 101, 0.98], [1395, 1484, 126, 118, 0.85]]),
+             np.array([[1060, 896, 87, 79, 0.2], [1055, 856, 82, 73, 0.3], [1496, 632, 59, 106, 0.5],
+                       [2013, 70, 31, 68, 0.6]]),
+             np.array([])]
+    truth = [np.array([[2510, 707, 43, 108], [1401, 1479, 131, 109]]),
+             np.array([[1043, 887, 95, 81], [1049, 860, 70, 56], [1496, 632, 65, 110], [2003, 64, 33, 64]]),
+             np.array([])]
+    for i, (p, t) in enumerate(zip(preds, truth)):
+        if p.size != 0:
+            preds[i] = bbu.convert_center_to_2points(p)
+        if t.size != 0:
+            truth[i] = bbu.convert_center_to_2points(t)
+    stats = su.compute_stats(preds, truth, 0.5)
+    print(stats)
 
 
 def test_dataset():

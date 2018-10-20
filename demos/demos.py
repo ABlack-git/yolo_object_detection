@@ -22,12 +22,14 @@ def test_model(net_cfg, path_to_parameters, images, labels, iou_threshold):
     ts = DatasetGenerator(conf)
     batch = ts.get_minibatch(net.batch_size, resize_only=True)
     stats = []
-    for _ in range(ts.get_number_of_batches(net.batch_size)):
+    num_batches = ts.get_number_of_batches(net.batch_size)
+    for i in range(num_batches):
         # labels are only resized
         imgs, labels = next(batch)
         preds = net.get_predictions(imgs)
         # compute stats for batch
         stats = su.compute_stats(preds, labels, iou_threshold, stats)
+        su.progress_bar(i, num_batches)
     final_stats = su.process_stats(stats)
     print('Average precision: {0[0]}, Average recall: {0[1]}, Average iou: {0[2]}, Average confidence of TP: {0[3]}, '
           'Average confidence of FP: {0[4]}, Total num of TP: {0[5]}, Total num of FP: {0[6]}, '

@@ -10,9 +10,7 @@ import json
 import bbox_utils as bbu
 
 
-def test_model(net_cfg, path_to_parameters, images, labels, iou_threshold):
-    net = YoloV0(net_cfg)
-    net.restore(path=path_to_parameters)
+def test_model(net, images, labels, iou_threshold):
     # construct json
     img_size = {"width": net.img_size[0], "height": net.img_size[1]}
     grid_size = {"width": net.grid_size[0], "height": net.grid_size[1]}
@@ -41,10 +39,8 @@ def test_model(net_cfg, path_to_parameters, images, labels, iou_threshold):
     net.close_sess()
 
 
-def show_images_with_boxes(cfg, testing_set, path_to_parameters, draw_centre=True, draw_grid=False, delay=0,
+def show_images_with_boxes(net, testing_set, draw_centre=True, draw_grid=False, delay=0,
                            print_time=True):
-    net = YoloV0(cfg)
-    net.restore(path=path_to_parameters)
     list_of_imgs = image_utils.list_of_images(testing_set)
     compute_time = []
     for img_path in list_of_imgs:
@@ -92,55 +88,24 @@ def parse_args():
     return args
 
 
-def fetch_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-stats', action='store_true')
-    parser.add_argument('-bboxes', action='store_true')
-    # common args
-    parser.add_argument('-cfg', action='store', type=str, help='Path to .cfg file')
-    parser.add_argument('-images', action='store', type=str, help='Path to folder that contains images', default='')
-    parser.add_argument('-labels', action='store', type=str, help='Path folder that contains labels', default='')
-    parser.add_argument('-weights', action='store', type=str, help='Path to weights. Note that path to weights should '
-                                                                   'not contain extension, e.g. .meta or .index.')
-    # add args that go with -stats
-
-    # args that go with -bboxes
-    parser.add_argument('-draw_centers', action='store_true', help='With this flag program will draw centers of '
-                                                                   'bounding boxes')
-    parser.add_argument('-draw_grid', action='store_true', help='With this flag program will draw grid over image')
-    parser.add_argument('-no_time', action='store_false', dest='print_time', help='With this flag program will not '
-                                                                                  'output processing time')
-    parser.add_argument('-delay', action='store', type=int, default=0, help='The amount of time in ms for how long '
-                                                                            'single image will be shown')
-    args = parser.parse_args()
-    if not args.stats and not args.bboxes:
-        parser.error('Either -stats or -bboxes flag should be specified.')
-
-    if not os.path.isfile(args.cfg):
-        parser.error("argument -cfg: invalid path to .cfg file.")
-    if not os.path.exists(args.images):
-        parser.error("argument -images: invalid path to image directory.")
-    if not (args.labels == ''):
-        if not os.path.exists(args.labels):
-            parser.error("argument -labels: invalid path to labels directory.")
-    if not os.path.isfile(args.weights + '.data-00000-of-00001'):
-        parser.error('argument -weights: invalid path to weights.')
-    return args
-
-
 def main():
     args = parse_args()
     with open(args.demos_cfg, 'r') as file:
         config = json.load(file)
+<<<<<<< HEAD
     
+=======
+    net = YoloV0(args.net_cfg)
+    net.restore(path=config['weights'])
+
+>>>>>>> bfea4a2bdf0fc6f356c21d90920d62698ea1a301
     if config['configuration']['modes']['images']:
-        show_images_with_boxes(args.net_cfg, config['images'], config['weights'],
-                               config['configuration']['draw_centers'],
+        show_images_with_boxes(net, config['images'], config['configuration']['draw_centers'],
                                config['configuration']['draw_grid'], config['configuration']['delay'],
                                config['configuration']['print_time'])
 
     if config['configuration']['modes']['stats']:
-        test_model(args.net_cfg, config['weights'], config['images'], config['annotations'],
+        test_model(net, config['images'], config['annotations'],
                    config['configuration']['iou_threshold'])
 
 

@@ -55,18 +55,19 @@ def compute_stats(pred_boxes, true_boxes, iou_threshold, stats=None):
                 ious = np.delete(ious, max_ind[0], axis=0)
                 if ious.size == 0:
                     break
-            # check for false positives
+            # check for false positives(background classified as person => low iou values for column)
             fp_ind = np.where(np.amax(ious, axis=0) < iou_threshold)[0]
             no_fp += fp_ind.size
             conf_fp_sum += np.sum(i_boxes[fp_ind, 4])
-            # check for false negatives
+            # check for false negatives(not detected person => low iou values for entire row)
             fn_ind = np.where(np.amax(ious, axis=1) < iou_threshold)[0]
             no_fn += fn_ind.size
             # delete rows and columns with false predictions
-            ious = np.delete(ious, fp_ind, axis=0)
+            # deletion along axis=0 is deletion of rows, axis=1 deletion of column
+            ious = np.delete(ious, fp_ind, axis=1)
             if ious.size == 0:
                 break
-            ious = np.delete(ious, fn_ind, axis=1)
+            ious = np.delete(ious, fn_ind, axis=0)
 
         precision = no_tp / (no_tp + no_fp) if (no_tp + no_fp) > 0 else 1
         recall = no_tp / (no_tp + no_fn) if (no_tp + no_fn) > 0 else 1

@@ -58,7 +58,7 @@ def convert_center_to_2points(bboxes):
     if bboxes.size == 0:
         return bboxes
     if len(bboxes.shape) < 2:
-        bboxes = np.array([bboxes])
+        bboxes = np.array(bboxes, ndmin=2)
     bboxes[:, 0] = bboxes[:, 0] - np.round(np.divide(bboxes[:, 2], 2))
     bboxes[:, 1] = bboxes[:, 1] - np.round(np.divide(bboxes[:, 3], 2))
     bboxes[:, 2] = bboxes[:, 0] + bboxes[:, 2]

@@ -24,7 +24,8 @@ def draw_grid(img, grid_size):
 def draw_centers(img, boxes):
     for _ in boxes:
         for box in boxes:
-            cv2.circle(img, (box[0], box[1]), 2, (0, 0, 255), -1)
+            if box:
+                cv2.circle(img, (box[0], box[1]), 2, (0, 0, 255), -1)
 
 
 def draw_text(text, img):

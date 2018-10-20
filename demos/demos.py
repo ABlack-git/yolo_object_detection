@@ -130,5 +130,6 @@ def main():
         test_model(args.net_cfg, config['weights'], config['images'], config['annotations'],
                    config['configuration']['iou_threshold'])
 
-    if __name__ == '__main__':
-        main()
+
+if __name__ == '__main__':
+    main()

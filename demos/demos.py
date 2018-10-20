@@ -127,9 +127,8 @@ def main():
                                config['draw_grid'], config['delay'])
 
     if config['configuration']['modes']['stats']:
-        test_model(args.net_cfg, config['images'], config['annotations'], config['weights'],
+        test_model(args.net_cfg, config['weights'], config['images'], config['annotations'],
                    config['configuration']['iou_threshold'])
 
-
-if __name__ == '__main__':
-    main()
+    if __name__ == '__main__':
+        main()

@@ -6,7 +6,7 @@ import bbox_utils as bbu
 
 def draw_bbox(data, img, color=(0, 139, 0), thickness=2):
     data = np.array(data)
-    data = bbu.convert_center_to_2points(data)
+    # data = bbu.convert_center_to_2points(data)
     for rect in data:
         if rect.size != 0:
             cv2.rectangle(img, (rect[0], rect[1]), (rect[2], rect[3]), color, thickness)

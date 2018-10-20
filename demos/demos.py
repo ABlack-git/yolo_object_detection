@@ -7,6 +7,7 @@ import os
 import time
 import argparse
 import json
+import bbox_utils as bbu
 
 
 def test_model(net_cfg, path_to_parameters, images, labels, iou_threshold):
@@ -24,11 +25,14 @@ def test_model(net_cfg, path_to_parameters, images, labels, iou_threshold):
     stats = []
     num_batches = ts.get_number_of_batches(net.batch_size)
     for i in range(num_batches):
-        # labels are only resized
+        # labels are only resized and returned in center based coords
         imgs, labels = next(batch)
+        true_boxes = []
+        for img_labesl in labels:
+            true_boxes.append(bbu.convert_center_to_2points(img_labesl))
         preds = net.get_predictions(imgs)
         # compute stats for batch
-        stats = su.compute_stats(preds, labels, iou_threshold, stats)
+        stats = su.compute_stats(preds, true_boxes, iou_threshold, stats)
         su.progress_bar(i, num_batches)
     final_stats = su.process_stats(stats)
     print('Average precision: {0[0]}, Average recall: {0[1]}, Average iou: {0[2]}, Average confidence of TP: {0[3]}, '

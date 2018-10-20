@@ -44,7 +44,10 @@ def show_images_with_boxes(cfg, testing_set, path_to_parameters, draw_centre=Tru
     compute_time = []
     for img_path in list_of_imgs:
         t0_read = time.time()
-        img = cv2.imread(os.path.join(testing_set, img_path))
+        if isinstance(testing_set, list):
+            img = cv2.imread(img_path)
+        else:
+            img = cv2.imread(os.path.join(testing_set, img_path))
         t_read = time.time() - t0_read
         t0_resize = time.time()
         img = image_utils.resize_img(img, net.img_size[1], net.img_size[0])

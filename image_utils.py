@@ -36,7 +36,8 @@ def list_of_images(path):
     imgs = []
     if isinstance(path, list):
         for folder in path:
-            imgs += [f for f in os.listdir(folder) if f.endswith('.jpg') and not f.startswith('.')]
+            imgs += [os.path.join(folder, f) for f in os.listdir(folder) if
+                     f.endswith('.jpg') and not f.startswith('.')]
     elif isinstance(path, str):
         imgs = [f for f in os.listdir(path) if f.endswith('.jpg') and not f.startswith('.')]
     else:

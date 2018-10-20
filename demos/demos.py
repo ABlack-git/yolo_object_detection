@@ -71,8 +71,8 @@ def show_images_with_boxes(cfg, testing_set, path_to_parameters, draw_centre=Tru
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('net_cfg', action='store', type=str, help='Path to configuration file of the network')
-    parser.add_argument('demos_cfg', action='store', type=str, help='Path to configuration file for demos')
+    parser.add_argument('-net_cfg', action='store', type=str, help='Path to configuration file of the network')
+    parser.add_argument('-demos_cfg', action='store', type=str, help='Path to configuration file for demos')
     args = parser.parse_args()
     if not os.path.isfile(args.net_cfg):
         parser.error('Path to configuration file of the network should point to existing file.')

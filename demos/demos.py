@@ -92,13 +92,10 @@ def main():
     args = parse_args()
     with open(args.demos_cfg, 'r') as file:
         config = json.load(file)
-<<<<<<< HEAD
-    
-=======
+        
     net = YoloV0(args.net_cfg)
     net.restore(path=config['weights'])
 
->>>>>>> bfea4a2bdf0fc6f356c21d90920d62698ea1a301
     if config['configuration']['modes']['images']:
         show_images_with_boxes(net, config['images'], config['configuration']['draw_centers'],
                                config['configuration']['draw_grid'], config['configuration']['delay'],

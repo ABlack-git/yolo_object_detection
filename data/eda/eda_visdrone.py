@@ -1,6 +1,6 @@
 import cv2
 import os
-import sys
+import stats_utils as su
 
 
 def compute_aspectratio(width: int, height: int):
@@ -15,17 +15,6 @@ def compute_aspectratio(width: int, height: int):
     return '{0}:{1}'.format(x, y)
 
 
-def progress(count, total, suffix=''):
-    bar_len = 60
-    filled_len = int(round(bar_len * count / float(total)))
-
-    percents = round(100.0 * count / float(total), 1)
-    bar = '*' * filled_len + '-' * (bar_len - filled_len)
-    print('\r[%s] %s' % (bar, percents), end='\r')
-    # sys.stdout.write('[%s] %s%s ...%s\r' % (bar, percents, '%', suffix))
-    # sys.stdout.flush()  # As suggested by Rom Ruben
-
-
 def as_stats():
     img_dir = '/Volumes/TRANSCEND/Data Sets/VisDrone2018-DET-train/images'
     imgs = [f for f in os.listdir(img_dir) if (not f.startswith('.')) and f.endswith('.jpg')]
@@ -36,7 +25,7 @@ def as_stats():
         img = cv2.imread(os.path.join(img_dir, img_path))
         asr = compute_aspectratio(img.shape[1], img.shape[0])
         dims = '{0}:{1}'.format(img.shape[1], img.shape[0])
-        progress(i + 1, no_items)
+        su.progress_bar(i + 1, no_items)
         if asr not in aspects:
             aspects[asr] = 0
         if dims not in wh:

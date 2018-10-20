@@ -105,3 +105,12 @@ def compute_distance(bb_a, bb_b):
     y_dist = np.power(bb_a[1] - bb_b[1], 2)
     t_dist = np.sqrt(x_dist + y_dist)
     return int(np.sqrt(x_dist)), int(np.sqrt(y_dist)), int(t_dist)
+
+
+def progress_bar(count, total):
+    bar_len = 60
+    filled_len = int(round(bar_len * count / float(total)))
+
+    percents = round(100.0 * count / float(total), 1)
+    bar = '*' * filled_len + '-' * (bar_len - filled_len)
+    print('\r[%s] %s' % (bar, percents), end='\r')

@@ -102,7 +102,8 @@ def save_stats(stats, path, model_name):
     header = ['Precision', 'Recall', 'AVG_IOU', 'AVG_CONF_TP', 'AVG_CONF_FP', 'Number of TP', 'Number of FP',
               'Number of FN']
     df = pd.DataFrame(stats, columns=header)
-    df.to_csv(os.path.join(path, 'stats_' + model_name))
+    print(df)
+    df.to_csv(os.path.join(path, 'stats_{0}.csv'.format(model_name)))
 
 
 def compute_distance(bb_a, bb_b):

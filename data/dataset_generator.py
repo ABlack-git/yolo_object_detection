@@ -155,7 +155,10 @@ class DatasetGenerator:
                 empty = True
 
             if counter % batch_size == 0:
-                yield images, np.array(labels, dtype=np.float32)
+                if resize_only:
+                    yield images, labels
+                else:
+                    yield images, np.array(labels, dtype=np.float32)
                 del images
                 del labels
                 images = []

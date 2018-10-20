@@ -49,10 +49,10 @@ def compute_stats(pred_boxes, true_boxes, iou_threshold, stats=None):
                 # assign predictor to ground truth
                 no_tp += 1
                 iou_sum += max_iou
-                conf_tp_sum += i_boxes[max_ind[0], 4]
+                conf_tp_sum += i_boxes[max_ind[1], 4]
                 # delete rows and cols
-                ious = np.delete(ious, max_ind[0], axis=1)
-                ious = np.delete(ious, max_ind[1], axis=0)
+                ious = np.delete(ious, max_ind[1], axis=1)
+                ious = np.delete(ious, max_ind[0], axis=0)
                 if ious.size == 0:
                     break
             # check for false positives

@@ -63,10 +63,10 @@ def compute_stats(pred_boxes, true_boxes, iou_threshold, stats=None):
             fn_ind = np.where(np.amax(ious, axis=1) < iou_threshold)[0]
             no_fn += fn_ind.size
             # delete rows and columns with false predictions
-            ious = np.delete(ious, fp_ind, axis=1)
+            ious = np.delete(ious, fp_ind, axis=0)
             if ious.size == 0:
                 break
-            ious = np.delete(ious, fn_ind, axis=0)
+            ious = np.delete(ious, fn_ind, axis=1)
 
         precision = no_tp / (no_tp + no_fp) if (no_tp + no_fp) > 0 else 1
         recall = no_tp / (no_tp + no_fn) if (no_tp + no_fn) > 0 else 1

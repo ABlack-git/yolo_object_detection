@@ -10,7 +10,7 @@ import json
 import bbox_utils as bbu
 
 
-def test_model(net, images, labels, iou_threshold):
+def test_model(net, images, labels, iou_threshold, save_stats, path=''):
     # construct json
     img_size = {"width": net.img_size[0], "height": net.img_size[1]}
     grid_size = {"width": net.grid_size[0], "height": net.grid_size[1]}
@@ -33,6 +33,8 @@ def test_model(net, images, labels, iou_threshold):
         stats = su.compute_stats(preds, true_boxes, iou_threshold, stats)
         su.progress_bar(i, num_batches)
     final_stats = su.process_stats(stats)
+    if save_stats:
+        su.save_stats(stats, path, net.model_version)
     print('Average precision: {0[0]}, Average recall: {0[1]}, Average iou: {0[2]}, Average confidence of TP: {0[3]}, '
           'Average confidence of FP: {0[4]}, Total num of TP: {0[5]}, Total num of FP: {0[6]}, '
           'Total num of FN: {0[7]}'.format(final_stats))
@@ -93,15 +95,15 @@ def main():
 
     net = YoloV0(args.net_cfg)
     net.restore(path=config['weights'])
-
-    if config['configuration']['modes']['images']:
+    modes = config['configuration']['modes']
+    if modes['images']:
         show_images_with_boxes(net, config['images'], config['configuration']['draw_centers'],
                                config['configuration']['draw_grid'], config['configuration']['delay'],
                                config['configuration']['print_time'])
 
-    if config['configuration']['modes']['stats']:
+    if modes['stats']['enable']:
         test_model(net, config['images'], config['annotations'],
-                   config['configuration']['iou_threshold'])
+                   config['configuration']['iou_threshold'], modes['stats']['save'], modes['stats']['path'])
     net.close_sess()
 
 

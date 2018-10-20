@@ -1,5 +1,7 @@
 import numpy as np
 import bbox_utils as bbu
+import pandas as pd
+import os
 
 
 def compute_stats(pred_boxes, true_boxes, iou_threshold, stats=None):
@@ -94,6 +96,13 @@ def process_stats(stats):
     avg_conf_fp = np.sum(stats[:, 4]) / sum_fp if sum_fp > 0 else None
     sum_fn = np.sum(stats[:, 7])
     return [avg_prec, avg_recall, avg_iou, avg_conf_tp, avg_conf_fp, sum_tp, sum_fp, sum_fn]
+
+
+def save_stats(stats, path, model_name):
+    header = ['Precision', 'Recall', 'AVG_IOU', 'AVG_CONF_TP', 'AVG_CONF_FP', 'Number of TP', 'Number of FP',
+              'Number of FN']
+    df = pd.DataFrame(stats, columns=header)
+    df.to_csv(os.path.join(path, 'stats_' + model_name))
 
 
 def compute_distance(bb_a, bb_b):

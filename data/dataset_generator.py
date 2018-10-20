@@ -89,7 +89,7 @@ class DatasetGenerator:
         return img
 
     def resize_and_adjust_labels(self, orgn_size, boxes, resize_only=False):
-        label = np.zeros(5 * self.no_boxes * self.grid_ph * self.grid_pw)
+        label = np.zeros(5 * self.no_boxes * self.grid_h * self.grid_w)
         if boxes is None:
             return label
 

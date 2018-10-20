@@ -125,8 +125,10 @@ def main():
         config = json.load(file)
 
     if config['configuration']['modes']['images']:
-        show_images_with_boxes(args.net_cfg, config['images'], config['weights'], config['draw_centers'],
-                               config['draw_grid'], config['delay'])
+        show_images_with_boxes(args.net_cfg, config['images'], config['weights'],
+                               config['configuration']['draw_centers'],
+                               config['configuration']['draw_grid'], config['configuration']['delay'],
+                               config['configuration']['print_time'])
 
     if config['configuration']['modes']['stats']:
         test_model(args.net_cfg, config['weights'], config['images'], config['annotations'],

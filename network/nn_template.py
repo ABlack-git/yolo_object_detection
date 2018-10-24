@@ -21,7 +21,7 @@ class ANN:
     def loss_func(self, predictions, labels):
         raise NotImplementedError
 
-    def optimize(self, epochs, summ_step, trainset_cfg, validset_cfg, test):
+    def optimize(self, train_set, valid_set, num_epochs, param_dict):
         raise NotImplementedError
 
     def save(self, path, name):

@@ -90,10 +90,10 @@ def process_stats(stats):
     avg_prec = np.sum(precisions) / precisions.size if precisions.size > 0 else 1
     avg_recall = np.sum(recalls) / recalls.size if recalls.size > 0 else 1
     sum_tp = np.sum(stats[:, 5])
-    avg_iou = np.sum(stats[:, 2]) / sum_tp if sum_tp > 0 else None
-    avg_conf_tp = np.sum(stats[:, 3]) / sum_tp if sum_tp > 0 else None
+    avg_iou = np.sum(stats[:, 2]) / sum_tp if sum_tp > 0 else -1
+    avg_conf_tp = np.sum(stats[:, 3]) / sum_tp if sum_tp > 0 else -1
     sum_fp = np.sum(stats[:, 6])
-    avg_conf_fp = np.sum(stats[:, 4]) / sum_fp if sum_fp > 0 else None
+    avg_conf_fp = np.sum(stats[:, 4]) / sum_fp if sum_fp > 0 else -1
     sum_fn = np.sum(stats[:, 7])
     return [avg_prec, avg_recall, avg_iou, avg_conf_tp, avg_conf_fp, sum_tp, sum_fp, sum_fn]
 
@@ -123,10 +123,12 @@ def compute_distance(bb_a, bb_b):
     return int(np.sqrt(x_dist)), int(np.sqrt(y_dist)), int(t_dist)
 
 
-def progress_bar(count, total):
+def progress_bar(count, total, prefix='', sufix=''):
     bar_len = 60
     filled_len = int(round(bar_len * count / float(total)))
 
     percents = round(100.0 * count / float(total), 1)
     bar = '*' * filled_len + '-' * (bar_len - filled_len)
-    print('\r[%s] %s' % (bar, percents), end='\r')
+    print('\r{} [{}] {} {}'.format(prefix, bar, percents, sufix), end='\r')
+    if count == total:
+        print()

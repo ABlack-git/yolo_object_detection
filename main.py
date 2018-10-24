@@ -1,13 +1,15 @@
 from network.yolo_v0 import YoloV0
 import argparse
 import os
+import json
+import sys
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-cfg', action='store', type=str, help='Path to .cfg file.')
     parser.add_argument('-pp', action='store', type=str, help='path to parameters that should be '
-                                                                                   'loaded', default=None)
+                                                              'loaded', default=None)
     parser.add_argument('-epochs', action='store', type=int, help='Number of epochs to process.', default=10)
     parser.add_argument('-timages', action='store', type=str, help='Path to training images.',
                         default="E:\Andrew\Dataset\Training set\Images")
@@ -40,16 +42,21 @@ def parse_args():
 
 
 def main():
-    args = parse_args()
-    training_set = [args.timages, args.tlabels]
-    valid_set = None
-    net = YoloV0(args.cfg)
-    if (args.vimages is not None) and (args.vlabels is not None):
-        valid_set = [args.vimages, args.vlabels]
-    # restore if path to weights was provided
-    if args.pp is not None:
-        net.restore(path=args.pp)
-    net.optimize(args.epochs, training_set, valid_set, args.summstep, do_test=args.test)
+    cfg = None
+    if len(sys.argv) > 1:
+        if os.path.exists(sys.argv[1]) and os.path.isfile(sys.argv[1]):
+            with open(sys.argv[1]) as file:
+                cfg = json.load(file)
+        else:
+            print('Path should point to existing file')
+            exit(1)
+    else:
+        print('Enter path to train_cfg file as first argument')
+        exit(1)
+    net = YoloV0(cfg['net_cfg'])
+    if cfg['weights'] is not None:
+        net.restore(path=cfg['weights'])
+    net.optimize(cfg['training_set'], cfg['validation_step'], cfg['num_epochs'], cfg['parametrs'])
 
 
 if __name__ == '__main__':

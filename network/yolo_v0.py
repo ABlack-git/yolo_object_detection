@@ -6,6 +6,9 @@ import datetime
 import numpy as np
 import time
 import configparser
+import json
+import stats_utils as su
+import bbox_utils as bbu
 
 
 class YoloV0(ANN):
@@ -42,14 +45,10 @@ class YoloV0(ANN):
         self.lr_policy = None
         self.lr_param = None
         # strings
-        self.load_path = ''
         self.optimizer_type = ''
         self.model_version = ''
-        self.summary_path = ''
-        self.save_path = ''
         # bools
         self.restored = False
-        self.restore_bool = False
         self.write_grads = False
         self.sqrt = True
         # Model initialization
@@ -71,8 +70,6 @@ class YoloV0(ANN):
 
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver(max_to_keep=10)
-        if self.restore_bool:
-            self.restore(self.load_path)
 
     def loss_func(self, y_pred, y_true):
         if not self.loss:
@@ -180,10 +177,8 @@ class YoloV0(ANN):
                     raise ValueError('Length of prob isobj array is not equal to epoch step array')
                 self.nms_threshold = parser.getfloat(section, 'nms_threshold')
                 self.batch_size = parser.getint(section, 'batch_size')
-                self.summary_path = parser.get(section, 'summary_path')
                 self.model_version = parser.get(section, 'model_version')
                 self.optimizer_type = parser.get(section, 'optimizer')
-                self.save_path = parser.get(section, 'save_path')
                 # optional
                 if parser.has_option(section, 'lr_policy'):
                     self.lr_policy = [val for val in parser.get(section, 'lr_policy').split(',')]
@@ -209,17 +204,6 @@ class YoloV0(ANN):
                     self.sqrt = parser.getboolean(section, 'sqrt')
                 else:
                     self.sqrt = True
-                if parser.has_option(section, 'restore'):
-                    self.restore_bool = parser.getboolean(section, 'restore')
-                    if self.restore_bool:
-                        if parser.has_option(section, 'load_path'):
-                            self.load_path = parser.get(section, 'load_path')
-                        else:
-                            self.restore_bool = False
-                            tf.logging.warning('Parameter restore was set to true, but path to weights was not '
-                                               'specified. Load model with load function')
-                    else:
-                        self.restore_bool = False
 
                 if parser.has_option(section, 'write_grads'):
                     self.write_grads = parser.getboolean(section, 'write_grads')
@@ -325,22 +309,43 @@ class YoloV0(ANN):
                         self.summary_list.append(
                             tf.summary.histogram("{}-grad".format(grads[i][1].name.replace(':0', '-0')), grads[i]))
 
-    def optimize(self, no_epochs, summ_step, trainset_cfg, validset_cfg, do_test=False):
+    def optimize(self, train_set, valid_set, no_epochs, param_dict):
+        # init additional parameters
+        summ_step = param_dict['summary_step']
+        do_test = param_dict['do_test']
+        start_step = tf.train.global_step(self.sess, self.global_step)
+        # set save and summary folders
         now = datetime.datetime.now()
-        model_folder = os.path.join(self.summary_path, self.model_version)
+        model_folder = os.path.join(param_dict['summary_path'], self.model_version)
         summary_folder = '%d_%d_%d__%d-%d' % (now.day, now.month, now.year, now.hour, now.minute)
         summary_writer = tf.summary.FileWriter(os.path.join(model_folder, summary_folder), graph=tf.get_default_graph())
         summary = tf.summary.merge_all()
-        ts = DatasetGenerator(trainset_cfg)
-        save_path = os.path.join(self.save_path, self.model_version)
-        start_step = tf.train.global_step(self.sess, self.global_step)
-        if validset_cfg is not None:
-            vs = DatasetGenerator(validset_cfg)
+        save_path = os.path.join(param_dict['save_path'], self.model_version)
+        # init datasets
+        ts_cfg = {"images": train_set['images'], 'annotations': train_set['labels'],
+                  'configuration': {"img_size": {'width': self.img_size[0], 'height': self.img_size[1]}},
+                  'grid_size': {'width': self.grid_size[0], 'height': self.grid_size[1]}, 'no_boxes': self.no_boxes,
+                  'shuffle': True, 'sqrt': self.sqrt}
+        train_set = DatasetGenerator(json.dumps(ts_cfg))
+        train_test_set = None
+        if do_test:
+            if valid_set is not None:
+                vs_cfg = {"images": valid_set['images'], 'annotations': valid_set['labels'],
+                          'configuration': {"img_size": {'width': self.img_size[0], 'height': self.img_size[1]}},
+                          'grid_size': {'width': self.grid_size[0], 'height': self.grid_size[1]},
+                          'no_boxes': self.no_boxes,
+                          'shuffle': True, 'sqrt': self.sqrt}
+                valid_set = DatasetGenerator(vs_cfg)
+                ts_cfg['configuration']['subset_length'] = valid_set.get_dataset_size()
+            else:
+                ts_cfg['configuration']['subset_length'] = int(train_set.get_dataset_size() / 10)
+            train_test_set = DatasetGenerator(ts_cfg)
+
         tf.logging.info('Starting to train model. Current global step is %s'
                         % tf.train.global_step(self.sess, self.global_step))
         for _ in range(no_epochs):
-            batch = ts.get_minibatch(self.batch_size)
-            no_batches = ts.get_number_of_batches(self.batch_size)
+            batch = train_set.get_minibatch(self.batch_size)
+            no_batches = train_set.get_number_of_batches(self.batch_size)
             for i in range(no_batches):
                 t_0 = time.time()
                 imgs, labels = next(batch)
@@ -367,44 +372,6 @@ class YoloV0(ANN):
                     summary_writer.add_summary(s, tf.train.global_step(self.sess, self.global_step))
                     summary_writer.flush()
 
-                    if do_test:
-                        preds = self.sess.run(self.predictions, feed_dict={self.x: imgs, self.ph_train: False})
-                        predicted_boxes = self.predictions_to_boxes(preds)
-                        predicted_boxes = self.convert_coords(predicted_boxes)
-                        true_boxes = self.predictions_to_boxes(labels, last_dim_size=5)
-                        true_boxes = self.convert_coords(true_boxes)
-                        # delete all elements that do not represent boxes
-                        tmp = []
-                        for b_img in true_boxes:
-                            tmp.append(np.delete(b_img, np.where(b_img[:, 4] != 1.0), axis=0))
-                        true_boxes = tmp
-                        tmp = []
-                        for boxes in predicted_boxes:
-                            tmp.append(self.non_max_suppression(boxes))
-                        predicted_boxes = tmp
-                        stats = self.compute_stats(predicted_boxes, true_boxes)
-                        tmp = np.sum(stats, axis=0)
-                        no_tp = tmp[0]
-                        avg_prec = tmp[1] / len(stats)
-                        avg_recall = tmp[2] / len(stats)
-                        avg_conf = tmp[3] / len(stats)
-                        avg_iou = tmp[4] / len(stats)
-                        self.log_scalar('t_avg_prec', avg_prec, summary_writer, 'Statistics')
-                        self.log_scalar('t_avg_recall', avg_recall, summary_writer, 'Statistics')
-                        self.log_scalar('t_avg_conf', avg_conf, summary_writer, 'Statistics')
-                        self.log_scalar('t_avg_iou', avg_iou, summary_writer, 'Statistics')
-                        val_tf = time.time() - val_t0
-
-                        tf.logging.info('Statistics on training set')
-                        tf.logging.info('Step: %s, no_tp: %d, avg_precision: %.3f, '
-                                        'avg_recall %.3f, avg_confidance: %.3f, avg_iou: %.3f, Valiadation time: %.2f'
-                                        % (tf.train.global_step(self.sess, self.global_step), no_tp, avg_prec,
-                                           avg_recall,
-                                           avg_conf, avg_iou, val_tf))
-
-                if (i + 1) % 200 == 0 and do_test:
-                    self.test_model(self.batch_size)
-
                 _, loss = self.sess.run([self.optimizer, self.loss],
                                         feed_dict={self.x: imgs, self.y_true: labels,
                                                    self.ph_learning_rate: lr,
@@ -425,6 +392,20 @@ class YoloV0(ANN):
                                                                          self.prob_isobj[ind]))
             # save every epoch
             self.save(save_path, self.model_version)
+            if do_test and (valid_set is not None):
+                val_stats = self.__validate_model(valid_set, 0.5, prefix='Validation model on validation set')
+                self.log_scalar('validation_avg_prec', val_stats[0], summary_writer, 'Statistics')
+                self.log_scalar('validation_avg_recall', val_stats[1], summary_writer, 'Statistics')
+                self.log_scalar('validation_avg_iou', val_stats[2], summary_writer, 'Statistics')
+                self.log_scalar('validation_avg_conf_tp', val_stats[3], summary_writer, 'Statistics')
+                self.log_scalar('validation_avg_conf_fp', val_stats[4], summary_writer, 'Statistics')
+            if do_test:
+                val_stats = self.__validate_model(train_test_set, 0.5, prefix='Validation model on subset of train set')
+                self.log_scalar('train_avg_prec', val_stats[0], summary_writer, 'Statistics')
+                self.log_scalar('train_avg_recall', val_stats[1], summary_writer, 'Statistics')
+                self.log_scalar('train_avg_iou', val_stats[2], summary_writer, 'Statistics')
+                self.log_scalar('train_avg_conf_tp', val_stats[3], summary_writer, 'Statistics')
+                self.log_scalar('train_avg_conf_fp', val_stats[4], summary_writer, 'Statistics')
 
     def tf_iou(self, y_true, y_pred):
         """
@@ -506,7 +487,7 @@ class YoloV0(ANN):
             raise TypeError
         preds = self.sess.run(self.predictions, feed_dict={self.x: x, self.ph_train: False})
         preds = self.predictions_to_boxes(preds)
-        preds = self.convert_coords(preds)
+        preds = bbu.convert_center_to_2points(preds)
         ret = []
         for img in preds:
             ret.append(self.non_max_suppression(img))
@@ -638,10 +619,10 @@ class YoloV0(ANN):
         self.saver.save(self.sess, os.path.join(path, name),
                         global_step=tf.train.global_step(self.sess, self.global_step))
 
-    def graph_summary(self):
-        if not os.path.exists(self.summary_path):
-            os.makedirs(self.summary_path)
-        path = os.path.join(self.summary_path, self.model_version)
+    def graph_summary(self, summary_path):
+        if not os.path.exists(summary_path):
+            os.makedirs(summary_path)
+        path = os.path.join(summary_path, self.model_version)
         writer = tf.summary.FileWriter(path, graph=tf.get_default_graph())
         writer.flush()
 
@@ -690,9 +671,22 @@ class YoloV0(ANN):
         self.sess.close()
         self.sess = None
 
+    def __validate_model(self, dataset: DatasetGenerator, iou_threshold, prefix=''):
+        batch = dataset.get_minibatch(self.batch_size, resize_only=True)
+        num_batches = dataset.get_number_of_batches(self.batch_size)
+        stats = []
 
-if __name__ == '__main__':
-    cfg_file = 'cfg/model_8l_1.cfg'
-    net = YoloV0(cfg_file)
-    net.graph_summary()
-    net.close_sess()
+        for i in range(num_batches):
+            img, labels = next(batch)
+            true_boxes = []
+            for batch_bb in labels:
+                true_boxes.append(bbu.convert_center_to_2points(batch_bb))
+            preds = self.get_predictions(img)
+            stats = su.compute_stats(preds, true_boxes, iou_threshold, stats)
+            su.progress_bar(i, num_batches, prefix=prefix)
+        final_stats = su.process_stats(stats)
+        print('Average precision: {0[0]}, Average recall: {0[1]}, Average iou: {0[2]}, '
+              'Average confidence of TP: {0[3]}, '
+              'Average confidence of FP: {0[4]}, Total num of TP: {0[5]}, Total num of FP: {0[6]}, '
+              'Total num of FN: {0[7]}'.format(final_stats))
+        return final_stats

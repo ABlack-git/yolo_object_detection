@@ -18,10 +18,11 @@ class DatasetGenerator:
         self.no_boxes = None
         self.sqrt = False
         self.shuffle = False
+        self.subset_length = -1
         self.data_imgs = []
         self.data_labels = []
         self.read_config()
-        self.get_data()
+        self.__get_data()
         self.grid_pw = self.image_w / self.grid_w
         self.grid_ph = self.image_h / self.grid_h
 
@@ -47,8 +48,10 @@ class DatasetGenerator:
         self.no_boxes = config['no_boxes']
         self.shuffle = config['shuffle']
         self.sqrt = config['sqrt']
+        if "subset_length" in config:
+            self.subset_length = config['subset_length']
 
-    def get_data(self):
+    def __get_data(self):
         for img_d, lbl_d in zip(self.img_dir, self.labels_dir):
             self.data_imgs += [os.path.join(img_d, f) for f in os.listdir(img_d) if
                                f.endswith('.jpg') and not f.startswith('.')]
@@ -65,6 +68,9 @@ class DatasetGenerator:
                 print('Image has wrong annotation. Annotation file should have same name as image file.')
                 print(a + ' ' + b)
                 exit(1)
+        if self.subset_length > 0:
+            tmp = list(zip(self.data_imgs, self.data_labels))
+            self.data_imgs, self.data_labels = zip(*random.sample(tmp, self.subset_length))
 
     def reshuffle(self):
         ziped = list(zip(self.data_imgs, self.data_labels))
@@ -88,7 +94,7 @@ class DatasetGenerator:
             img = cv2.resize(img, (self.image_w, self.image_h), interpolation=cv2.INTER_AREA)
         return img
 
-    def resize_and_adjust_labels(self, orgn_size, boxes, resize_only=False):
+    def __resize_and_adjust_labels(self, orgn_size, boxes, resize_only=False):
         label = np.zeros(5 * self.no_boxes * self.grid_h * self.grid_w)
         if boxes is None:
             return label
@@ -145,13 +151,12 @@ class DatasetGenerator:
             # resize img
             img = self.resize_img(img)
             # resize and adujst labels
-            boxes = self.resize_and_adjust_labels((height, width), boxes, resize_only)
+            boxes = self.__resize_and_adjust_labels((height, width), boxes, resize_only)
             images.append(img)
             labels.append(boxes)
             counter += 1
 
             if len(self.data_labels) == counter:
-                # print('No more items in data set')
                 empty = True
 
             if counter % batch_size == 0:
@@ -166,3 +171,6 @@ class DatasetGenerator:
 
                 if empty:
                     break
+
+    def get_dataset_size(self):
+        return len(self.data_imgs)

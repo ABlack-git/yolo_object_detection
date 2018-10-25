@@ -1,0 +1,32 @@
+{
+  "net_cfg": "",
+  "weights": "",
+  "training_set": {
+    "images": [
+      "",
+      ""
+    ],
+    "labels": [
+      "",
+      ""
+    ]
+  },
+  "validation_set": {
+    "images": [
+      "",
+      ""
+    ],
+    "labels": [
+      "",
+      ""
+    ]
+  },
+  "parameters": {
+    "num_epochs": 10,
+    "do_test": true,
+    "summary_step": 100,
+    "summary_path": "",
+    "save_path": "",
+    "validation_step": 200
+  }
+}

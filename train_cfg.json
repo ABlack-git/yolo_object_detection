@@ -1,32 +1,40 @@
 {
-  "net_cfg": "",
-  "weights": "",
+  "net_cfg": "E:\\Andrew\\project\\yolo_object_detection\\cfg\\model_6l_v1_3.cfg",
+  "weights": null,
   "training_set": {
     "images": [
-      "",
-      ""
+      "E:\\Andrew\\DS\\Training Set\\Images\\MiniDrone",
+      "E:\\Andrew\\DS\\Training Set\\Images\\Okutama",
+      "E:\\Andrew\\DS\\Training set\\Images\\UFC",
+      "E:\\Andrew\\DS\\Training set\\Images\\VIRAT"
     ],
     "labels": [
-      "",
-      ""
+      "E:\\Andrew\\DS\\Training Set\\Annotations\\MiniDrone",
+      "E:\\Andrew\\DS\\Training Set\\Annotations\\Okutama",
+      "E:\\Andrew\\DS\\Training set\\Annotations\\UFC",
+      "E:\\Andrew\\DS\\Training set\\Annotations\\VIRAT"
     ]
   },
   "validation_set": {
     "images": [
-      "",
-      ""
+      "E:\\Andrew\\DS\\Validation Set\\Images\\MiniDrone",
+      "E:\\Andrew\\DS\\Validation Set\\Images\\Okutama",
+      "E:\\Andrew\\DS\\Validation set\\Images\\UFC",
+      "E:\\Andrew\\DS\\Validation set\\Images\\VIRAT"
     ],
     "labels": [
-      "",
-      ""
+     "E:\\Andrew\\DS\\Validation Set\\Annotations\\MiniDrone",
+      "E:\\Andrew\\DS\\Validation Set\\Annotations\\Okutama",
+      "E:\\Andrew\\DS\\Validation set\\Annotations\\UFC",
+      "E:\\Andrew\\DS\\Validation set\\Annotations\\VIRAT"
     ]
   },
   "parameters": {
-    "num_epochs": 10,
-    "do_test": true,
+    "num_epochs": 5,
+    "do_test": false,
     "summary_step": 100,
-    "summary_path": "",
-    "save_path": "",
+    "summary_path": "E:\\Andrew\\Ann_models\\summaries",
+    "save_path": "E:\\Andrew\\Ann_models\\weights",
     "validation_step": 200
   }
 }

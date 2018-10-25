@@ -56,7 +56,7 @@ def main():
     net = YoloV0(cfg['net_cfg'])
     if cfg['weights'] is not None:
         net.restore(path=cfg['weights'])
-    net.optimize(cfg['training_set'], cfg['validation_step'], cfg['num_epochs'], cfg['parametrs'])
+    net.optimize(cfg['training_set'], cfg['validation_set'], cfg['parameters']['num_epochs'], cfg['parameters'])
 
 
 if __name__ == '__main__':

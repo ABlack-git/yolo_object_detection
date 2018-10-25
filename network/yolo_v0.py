@@ -325,18 +325,19 @@ class YoloV0(ANN):
         save_path = os.path.join(param_dict['save_path'], self.model_version)
         # init datasets
         ts_cfg = {"images": train_set['images'], 'annotations': train_set['labels'],
-                  'configuration': {"img_size": {'width': self.img_size[0], 'height': self.img_size[1]}},
-                  'grid_size': {'width': self.grid_size[0], 'height': self.grid_size[1]}, 'no_boxes': self.no_boxes,
-                  'shuffle': True, 'sqrt': self.sqrt}
+                  'configuration': {"img_size": {'width': self.img_size[0], 'height': self.img_size[1]},
+                                    'grid_size': {'width': self.grid_size[0], 'height': self.grid_size[1]},
+                                    'no_boxes': self.no_boxes,
+                                    'shuffle': True, 'sqrt': self.sqrt}}
         train_set = DatasetGenerator(json.dumps(ts_cfg))
         train_test_set = None
         if do_test:
             if valid_set is not None:
                 vs_cfg = {"images": valid_set['images'], 'annotations': valid_set['labels'],
-                          'configuration': {"img_size": {'width': self.img_size[0], 'height': self.img_size[1]}},
-                          'grid_size': {'width': self.grid_size[0], 'height': self.grid_size[1]},
-                          'no_boxes': self.no_boxes,
-                          'shuffle': True, 'sqrt': self.sqrt}
+                          'configuration': {"img_size": {'width': self.img_size[0], 'height': self.img_size[1]},
+                                            'grid_size': {'width': self.grid_size[0], 'height': self.grid_size[1]},
+                                            'no_boxes': self.no_boxes,
+                                            'shuffle': True, 'sqrt': self.sqrt}}
                 valid_set = DatasetGenerator(vs_cfg)
                 ts_cfg['configuration']['subset_length'] = valid_set.get_dataset_size()
             else:

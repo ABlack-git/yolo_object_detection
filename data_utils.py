@@ -2,15 +2,24 @@ import os
 import numpy as np
 
 
-def list_dir(path, file_ext):
+def list_dir(paths, file_ext):
+    if isinstance(paths, str):
+        paths = [paths]
     labels = []
-    if os.path.isdir(path):
-        for file in os.listdir(path):
-            if file.endswith(file_ext) and not file.startswith('.'):
-                labels.append(file)
-    else:
-        raise ValueError('Path should point to existing directory')
+    for p in paths:
+        if os.path.isdir(p):
+            for file in os.listdir(p):
+                if file.endswith(file_ext) and not file.startswith('.'):
+                    labels.append(os.path.join(p, file))
+        else:
+            raise ValueError('Path should point to existing directory')
     return labels
+
+
+def match_imgs_with_labels(imgs: list, labels: list):
+    imgs.sort()
+    labels.sort()
+    return imgs, labels
 
 
 def get_boxes(txt_name):

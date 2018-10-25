@@ -7,15 +7,14 @@ import numpy as np
 from PIL import Image
 
 
-def boxes_per_image(path):
-    labels = du.list_dir(path, '.txt')
+def boxes_per_image(labels):
     bb_per_img = []
     empty_images = []
-    for file in labels:
-        bboxes = du.get_boxes(os.path.join(path, file))
+    for l in labels:
+        bboxes = du.get_boxes(l)
         if bboxes is None:
             bb_per_img.append(0)
-            empty_images.append(file)
+            empty_images.append(l)
             continue
         bb_per_img.append(bboxes.shape[0])
 
@@ -33,21 +32,18 @@ def boxes_per_image(path):
     return bb_per_img
 
 
-def distance(img_path, label_path):
+def distance(imgs, labels):
     resize_to = (480, 720)
-    labels = du.list_dir(label_path, '.txt')
-    imgs = [x.replace('.txt', '.jpg') for x in labels]
     x_dist = []
     y_dist = []
     t_dist = []
-    xy_dist = []
     for img, label in zip(imgs, labels):
-        bboxes = du.get_boxes(os.path.join(label_path, label))
+        bboxes = du.get_boxes(label)
         if bboxes is None:
             continue
         if bboxes.shape[0] < 2:
             continue
-        w, h = Image.open(os.path.join(img_path, img)).size
+        w, h = Image.open(img).size
         bboxes = bbu.resize_boxes(bboxes, (h, w), resize_to)
         distances = compute_distances(bboxes)
         for item in distances:
@@ -71,19 +67,17 @@ def compute_distances(bboxes):
     return distances
 
 
-def boxes_dimensions(label_path, img_path):
+def boxes_dimensions(labels, imgs):
     resize_to = (480, 720)
-    labels = du.list_dir(label_path, '.txt')
-    imgs = [x.replace('.txt', '.jpg') for x in labels]
     boxes_w = []
     boxes_h = []
     for img, label in zip(imgs, labels):
-        bboxes = du.get_boxes(os.path.join(label_path, label))
+        bboxes = du.get_boxes(label)
         if bboxes is None:
             continue
         if bboxes.shape[0] < 2:
             continue
-        w, h = Image.open(os.path.join(img_path, img)).size
+        w, h = Image.open(img).size
         bboxes = bbu.resize_boxes(bboxes, (h, w), resize_to)
         for item in bboxes:
             boxes_w.append(item[2])
@@ -209,11 +203,52 @@ def plot_distances(labels_path, img_path):
 
 
 def main():
-    labels_path = '/Volumes/TRANSCEND/Data Sets/DataSet/Training set/Annotations'
-    img_path = '/Volumes/TRANSCEND/Data Sets/DataSet/Training set/Images'
-    plot_dimensions(labels_path, img_path)
-    plot_bxs_per_img(labels_path)
-    plot_distances(labels_path, img_path)
+    test_set = {"images": ['/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Images/MiniDrone',
+                           '/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Images/Okutama',
+                           '/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Images/UFC',
+                           '/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Images/VIRAT'],
+                'labels': ['/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Annotations/MiniDrone',
+                           '/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Annotations/Okutama',
+                           '/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Annotations/UFC',
+                           '/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Annotations/VIRAT']}
+    train_set = {"images": ['/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Images/MiniDrone',
+                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Images/Okutama',
+                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Images/UFC',
+                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Images/VIRAT'],
+                 'labels': ['/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Annotations/MiniDrone',
+                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Annotations/Okutama',
+                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Annotations/UFC',
+                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Annotations/VIRAT']}
+    valid_set = {"images": ['/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Images/MiniDrone',
+                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Images/Okutama',
+                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Images/UFC',
+                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Images/VIRAT'],
+                 'labels': ['/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Annotations/MiniDrone',
+                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Annotations/Okutama',
+                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Annotations/UFC',
+                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Annotations/VIRAT']}
+    # stats of train set
+    # train_labels = du.list_dir(train_set['labels'], '.txt')
+    # train_imgs = du.list_dir(train_set['images'], '.jpg')
+    # train_imgs, train_labels = du.match_imgs_with_labels(train_imgs, train_labels)
+    # plot_dimensions(train_labels, train_imgs)
+    # plot_bxs_per_img(train_labels)
+    # plot_distances(train_labels, train_imgs)
+    # # stats of test set
+    # test_labels = du.list_dir(test_set['labels'], '.txt')
+    # test_imgs = du.list_dir(test_set['images'], '.jpg')
+    # test_imgs, test_labels = du.match_imgs_with_labels(test_imgs, test_labels)
+    # plot_dimensions(test_labels, test_imgs)
+    # plot_bxs_per_img(test_labels)
+    # plot_distances(test_labels, test_imgs)
+    # # stats of val set
+    val_labels = du.list_dir(valid_set['labels'], '.txt')
+    val_imgs = du.list_dir(valid_set['images'], '.jpg')
+    val_imgs, val_labels = du.match_imgs_with_labels(val_imgs, val_labels)
+    plot_dimensions(val_labels, val_imgs)
+    plot_bxs_per_img(val_labels)
+    plot_distances(val_labels, val_imgs)
+
     plt.show()
 
 

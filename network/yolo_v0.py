@@ -296,6 +296,8 @@ class YoloV0(ANN):
                 elif optimizer == 'Nesterov':
                     tf.logging.info('Using %s optimizer' % optimizer)
                     self.optimizer = tf.train.MomentumOptimizer(self.ph_learning_rate, param, use_nesterov=True)
+                elif optimizer == 'Momentum':
+                    self.optimizer = tf.train.MomentumOptimizer(self.ph_learning_rate, param, use_nesterov=False)
                 else:
                     tf.logging.warning('Optimizer specified in input is not supported. Exiting.')
                     exit(1)

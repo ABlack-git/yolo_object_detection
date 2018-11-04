@@ -338,11 +338,11 @@ class YoloV0(ANN):
                                             'grid_size': {'width': self.grid_size[0], 'height': self.grid_size[1]},
                                             'no_boxes': self.no_boxes,
                                             'shuffle': True, 'sqrt': self.sqrt}}
-                valid_set = DatasetGenerator(vs_cfg)
+                valid_set = DatasetGenerator(json.dumps(vs_cfg))
                 ts_cfg['configuration']['subset_length'] = valid_set.get_dataset_size()
             else:
                 ts_cfg['configuration']['subset_length'] = int(train_set.get_dataset_size() / 10)
-            train_test_set = DatasetGenerator(ts_cfg)
+            train_test_set = DatasetGenerator(json.dumps(ts_cfg))
 
         tf.logging.info('Starting to train model. Current global step is %s'
                         % tf.train.global_step(self.sess, self.global_step))

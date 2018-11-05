@@ -22,16 +22,18 @@ class YoloV0(ANN):
         self.saver = None
         self.ph_learning_rate = None
         self.ph_train = None
-        self.ph_coord_scale = None
         self.ph_noobj_scale = None
         self.ph_isobj_scale = None
         self.ph_prob_noobj = None
         self.ph_prob_isobj = None
+        self.ph_xy_scale = None
+        self.ph_wh_scale = None
         # Model parameters
         self.grid_size = None
         self.img_size = None
         self.epoch_step = None
-        self.coord_scale = None
+        self.xy_scale = None
+        self.wh_scale = None
         self.noobj_scale = None
         self.isobj_scale = None
         self.prob_noobj = None
@@ -39,11 +41,11 @@ class YoloV0(ANN):
         self.batch_size = None
         self.learning_rate = None
         self.nms_threshold = None
-        self.conf_threshold = 0.5
         self.no_boxes = 1
         self.optimizer_param = None
         self.lr_policy = None
         self.lr_param = None
+        self.outputs_per_box = -1
         # strings
         self.optimizer_type = ''
         self.model_version = ''
@@ -57,7 +59,8 @@ class YoloV0(ANN):
 
     def __create_network(self):
         self.ph_learning_rate = tf.placeholder(tf.float32, shape=(), name='learning_rate')
-        self.ph_coord_scale = tf.placeholder(tf.float32, shape=(), name='coord_scale')
+        self.ph_wh_scale = tf.placeholder(tf.float32, shape=(), name='wh_scale')
+        self.ph_xy_scale = tf.placeholder(tf.float32, shape=(), name='xy_scale')
         self.ph_noobj_scale = tf.placeholder(tf.float32, shape=(), name='noobj_scale')
         self.ph_isobj_scale = tf.placeholder(tf.float32, shape=(), name='isobj_scale')
         self.ph_prob_noobj = tf.placeholder(tf.float32, shape=(), name='prob_noobj')
@@ -74,7 +77,8 @@ class YoloV0(ANN):
     def loss_func(self, y_pred, y_true):
         if not self.loss:
             with tf.name_scope('Loss_function'):
-                y_pred = tf.reshape(y_pred, [-1, self.grid_size[0] * self.grid_size[1], 6], name='reshape_pred')
+                y_pred = tf.reshape(y_pred, [-1, self.grid_size[0] * self.grid_size[1], self.outputs_per_box],
+                                    name='reshape_pred')
                 y_true = tf.reshape(y_true, [-1, self.grid_size[0] * self.grid_size[1], 5], name='reshape_truth')
                 # define name scopes for better representation in tensorboard
                 with tf.variable_scope('is_obj'):
@@ -97,14 +101,12 @@ class YoloV0(ANN):
                     p_h = y_pred[:, :, 3]
                 with tf.variable_scope('p_c'):
                     p_c = y_pred[:, :, 4]
-                with tf.variable_scope('p_prob'):
-                    p_prob = y_pred[:, :, 5]
 
                 with tf.name_scope('XY_LOSS'):
-                    xy_loss = self.ph_coord_scale * tf.reduce_sum(
+                    xy_loss = self.ph_xy_scale * tf.reduce_sum(
                         tf.multiply(is_obj, tf.pow(p_x - t_x, 2) + tf.pow(p_y - t_y, 2)), name='xy_loss')
                 with tf.name_scope('WH_LOSS'):
-                    wh_loss = self.ph_coord_scale * tf.reduce_sum(
+                    wh_loss = self.ph_wh_scale * tf.reduce_sum(
                         tf.multiply(is_obj, tf.pow(p_w - t_w, 2) + tf.pow(p_h - t_h, 2)), name='wh_loss')
 
                 # calculate confidance
@@ -121,23 +123,30 @@ class YoloV0(ANN):
                 with tf.variable_scope('noobj_loss'):
                     c_noobj_loss = self.ph_noobj_scale * tf.reduce_sum(tf.multiply(no_obj, tf.pow(p_c - iou, 2)),
                                                                        name='c_noobj_loss')
-                with tf.variable_scope('prob_obj_loss'):
-                    prob_obj_loss = self.ph_prob_isobj * tf.reduce_sum(tf.multiply(is_obj, tf.pow(p_prob - is_obj, 2)),
-                                                                       name='prob_obj_loss')
-                with tf.variable_scope('prob_noobj_loss'):
-                    prob_noobj_loss = self.ph_prob_noobj * tf.reduce_sum(
-                        tf.multiply(no_obj, tf.pow(p_prob - is_obj, 2)),
-                        name='prob_noobj_loss')
-                with tf.variable_scope('Loss'):
-                    self.loss = tf.add_n([xy_loss, wh_loss, c_obj_loss, c_noobj_loss, prob_obj_loss, prob_noobj_loss],
-                                         name='loss')
+
+                if self.outputs_per_box == 6:
+                    with tf.variable_scope('p_prob'):
+                        p_prob = y_pred[:, :, 5]
+                    with tf.variable_scope('prob_obj_loss'):
+                        prob_obj_loss = self.ph_prob_isobj * tf.reduce_sum(
+                            tf.multiply(is_obj, tf.pow(p_prob - is_obj, 2)),
+                            name='prob_obj_loss')
+                    with tf.variable_scope('prob_noobj_loss'):
+                        prob_noobj_loss = self.ph_prob_noobj * tf.reduce_sum(
+                            tf.multiply(no_obj, tf.pow(p_prob - is_obj, 2)),
+                            name='prob_noobj_loss')
+                    with tf.variable_scope('Loss'):
+                        self.loss = tf.add_n([xy_loss, wh_loss, c_obj_loss, c_noobj_loss, prob_obj_loss,
+                                              prob_noobj_loss], name='loss')
+                        self.summary_list.append(tf.summary.scalar('prob_obj_loss', prob_obj_loss))
+                        self.summary_list.append(tf.summary.scalar('prob_noobj_loss', prob_noobj_loss))
+                else:
+                    self.loss = tf.add_n([xy_loss, wh_loss, c_obj_loss, c_noobj_loss], name='loss')
 
                 self.summary_list.append(tf.summary.scalar('xy_loss', xy_loss))
                 self.summary_list.append(tf.summary.scalar('wh_loss', wh_loss))
                 self.summary_list.append(tf.summary.scalar('c_obj_loss', c_obj_loss))
                 self.summary_list.append(tf.summary.scalar('c_noobj_loss', c_noobj_loss))
-                self.summary_list.append(tf.summary.scalar('prob_obj_loss', prob_obj_loss))
-                self.summary_list.append(tf.summary.scalar('prob_noobj_loss', prob_noobj_loss))
                 self.summary_list.append(tf.summary.scalar('Loss', self.loss))
                 self.summary_list.append(tf.summary.histogram('is_obj', is_obj))
                 self.summary_list.append(tf.summary.histogram('no_obj', no_obj))
@@ -158,15 +167,16 @@ class YoloV0(ANN):
                                              name='labels')
                 self.epoch_step = [int(val) for val in parser.get(section, 'epoch_step').split(',')]
                 self.learning_rate = [float(val) for val in parser.get(section, 'learning_rate').split(',')]
-                self.coord_scale = [float(val) for val in parser.get(section, 'coord_scale').split(',')]
+                self.xy_scale = [float(val) for val in parser.get(section, 'xy_scale').split(',')]
+                self.wh_scale = [float(val) for val in parser.get(section, 'wh_scale').split(',')]
                 self.noobj_scale = [float(val) for val in parser.get(section, 'noobj_scale').split(',')]
                 self.isobj_scale = [float(val) for val in parser.get(section, 'isobj_scale').split(',')]
                 self.prob_noobj = [float(val) for val in parser.get(section, 'prob_noobj').split(',')]
                 self.prob_isobj = [float(val) for val in parser.get(section, 'prob_isobj').split(',')]
                 if len(self.learning_rate) != len(self.epoch_step):
                     raise ValueError('Length of learning rate array is not equal to epoch step array')
-                if len(self.coord_scale) != len(self.epoch_step):
-                    raise ValueError('Length of coord scale array is not equal to epoch step array')
+                if (len(self.xy_scale) != len(self.epoch_step)) or (len(self.wh_scale) != len(self.epoch_step)):
+                    raise ValueError('Length of xy or wh scale arrays is not equal to epoch step array')
                 if len(self.noobj_scale) != len(self.epoch_step):
                     raise ValueError('Length of noobj scale array is not equal to epoch step array')
                 if len(self.isobj_scale) != len(self.epoch_step):
@@ -209,6 +219,10 @@ class YoloV0(ANN):
                     self.write_grads = parser.getboolean(section, 'write_grads')
                 else:
                     self.write_grads = False
+                if parser.has_option(section, 'outputs_per_box'):
+                    self.outputs_per_box = parser.getint(section, 'outputs_per_box')
+                else:
+                    self.outputs_per_box = 5
 
             elif section.startswith('CONV'):
                 name = section
@@ -363,10 +377,10 @@ class YoloV0(ANN):
                 lr = super().learning_rate(self.learning_rate[ind], g_step, self.lr_param[ind], self.lr_policy[ind],
                                            start_step)
                 if (g_step + 1) % summ_step == 0:
-                    val_t0 = time.time()
                     s = self.sess.run(summary, feed_dict={self.x: imgs, self.y_true: labels,
                                                           self.ph_learning_rate: lr,
-                                                          self.ph_coord_scale: self.coord_scale[ind],
+                                                          self.ph_wh_scale: self.wh_scale[ind],
+                                                          self.ph_xy_scale: self.xy_scale[ind],
                                                           self.ph_noobj_scale: self.noobj_scale[ind],
                                                           self.ph_train: True,
                                                           self.ph_isobj_scale: self.isobj_scale[ind],
@@ -378,7 +392,8 @@ class YoloV0(ANN):
                 _, loss = self.sess.run([self.optimizer, self.loss],
                                         feed_dict={self.x: imgs, self.y_true: labels,
                                                    self.ph_learning_rate: lr,
-                                                   self.ph_coord_scale: self.coord_scale[ind],
+                                                   self.ph_wh_scale: self.wh_scale[ind],
+                                                   self.ph_xy_scale: self.xy_scale[ind],
                                                    self.ph_noobj_scale: self.noobj_scale[ind],
                                                    self.ph_train: True,
                                                    self.ph_isobj_scale: self.isobj_scale[ind],
@@ -388,11 +403,13 @@ class YoloV0(ANN):
                 epoch = int(g_step / no_batches) + 1
                 tf.logging.info('Global step: %d, epoch: %d, loss: %.3f, Batch processed: %d/%d, '
                                 'Time to process batch: %.2f' % (g_step, epoch, loss, i + 1, no_batches, t_f))
-                tf.logging.info('Learning rate %.2e, coord scale: %.2e, noobj scale: %.2e, is obj scale: %.2e, '
-                                'prob noobj: %.2e, prob is obj: %.2e' % (lr, self.coord_scale[ind],
-                                                                         self.noobj_scale[ind], self.isobj_scale[ind],
-                                                                         self.prob_noobj[ind],
-                                                                         self.prob_isobj[ind]))
+                tf.logging.info('Learning rate %.2e, xy scale: %.2e, wh scale: %.2e, noobj scale: %.2e, is obj scale: '
+                                '%.2e, prob noobj: %.2e, prob is obj: %.2e' % (lr, self.xy_scale[ind],
+                                                                               self.wh_scale[ind],
+                                                                               self.noobj_scale[ind],
+                                                                               self.isobj_scale[ind],
+                                                                               self.prob_noobj[ind],
+                                                                               self.prob_isobj[ind]))
             # save every epoch
             self.save(save_path, self.model_version)
             if do_test and (valid_set is not None):
@@ -645,7 +662,8 @@ class YoloV0(ANN):
                     self.ph_train = graph.get_tensor_by_name('training:0')
                     self.ph_learning_rate = graph.get_tensor_by_name('learning_rate:0')
                     self.ph_noobj_scale = graph.get_tensor_by_name('noobj_scale:0')
-                    self.ph_coord_scale = graph.get_tensor_by_name('coord_scale:0')
+                    self.ph_xy_scale = graph.get_tensor_by_name('xy_scale:0')
+                    self.ph_wh_scale = graph.get_tensor_by_name('wh_scale:0')
                     self.ph_isobj_scale = graph.get_tensor_by_name('isobj_scale:0')
                     # self.saver = tf.train.Saver(max_to_keep=10)
                     self.restored = True

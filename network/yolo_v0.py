@@ -63,11 +63,13 @@ class YoloV0(ANN):
         self.ph_xy_scale = tf.placeholder(tf.float32, shape=(), name='xy_scale')
         self.ph_noobj_scale = tf.placeholder(tf.float32, shape=(), name='noobj_scale')
         self.ph_isobj_scale = tf.placeholder(tf.float32, shape=(), name='isobj_scale')
-        self.ph_prob_noobj = tf.placeholder(tf.float32, shape=(), name='prob_noobj')
-        self.ph_prob_isobj = tf.placeholder(tf.float32, shape=(), name='prob_noobj')
+
         self.ph_train = tf.placeholder(tf.bool, name='training')
         self.global_step = tf.Variable(0, name="global_step", trainable=False)
         self.init_network(self.cfg)
+        if self.outputs_per_box > 5:
+            self.ph_prob_noobj = tf.placeholder(tf.float32, shape=(), name='prob_noobj')
+            self.ph_prob_isobj = tf.placeholder(tf.float32, shape=(), name='prob_noobj')
         self.loss_func(self.predictions, self.y_true)
         self._optimizer(self.optimizer_type, self.optimizer_param, write_summary=self.write_grads)
 
@@ -171,8 +173,7 @@ class YoloV0(ANN):
                 self.wh_scale = [float(val) for val in parser.get(section, 'wh_scale').split(',')]
                 self.noobj_scale = [float(val) for val in parser.get(section, 'noobj_scale').split(',')]
                 self.isobj_scale = [float(val) for val in parser.get(section, 'isobj_scale').split(',')]
-                self.prob_noobj = [float(val) for val in parser.get(section, 'prob_noobj').split(',')]
-                self.prob_isobj = [float(val) for val in parser.get(section, 'prob_isobj').split(',')]
+
                 if len(self.learning_rate) != len(self.epoch_step):
                     raise ValueError('Length of learning rate array is not equal to epoch step array')
                 if (len(self.xy_scale) != len(self.epoch_step)) or (len(self.wh_scale) != len(self.epoch_step)):
@@ -181,10 +182,7 @@ class YoloV0(ANN):
                     raise ValueError('Length of noobj scale array is not equal to epoch step array')
                 if len(self.isobj_scale) != len(self.epoch_step):
                     raise ValueError('Length of isobj scale array is not equal to epoch step array')
-                if len(self.prob_noobj) != len(self.epoch_step):
-                    raise ValueError('Length of prob noobj array is not equal to epoch step array')
-                if len(self.prob_isobj) != len(self.epoch_step):
-                    raise ValueError('Length of prob isobj array is not equal to epoch step array')
+
                 self.nms_threshold = parser.getfloat(section, 'nms_threshold')
                 self.batch_size = parser.getint(section, 'batch_size')
                 self.model_version = parser.get(section, 'model_version')
@@ -221,6 +219,13 @@ class YoloV0(ANN):
                     self.write_grads = False
                 if parser.has_option(section, 'outputs_per_box'):
                     self.outputs_per_box = parser.getint(section, 'outputs_per_box')
+                    if self.outputs_per_box > 5:
+                        self.prob_noobj = [float(val) for val in parser.get(section, 'prob_noobj').split(',')]
+                        self.prob_isobj = [float(val) for val in parser.get(section, 'prob_isobj').split(',')]
+                        if len(self.prob_noobj) != len(self.epoch_step):
+                            raise ValueError('Length of prob noobj array is not equal to epoch step array')
+                        if len(self.prob_isobj) != len(self.epoch_step):
+                            raise ValueError('Length of prob isobj array is not equal to epoch step array')
                 else:
                     self.outputs_per_box = 5
 
@@ -358,6 +363,7 @@ class YoloV0(ANN):
                 ts_cfg['configuration']['subset_length'] = int(train_set.get_dataset_size() / 10)
             train_test_set = DatasetGenerator(json.dumps(ts_cfg))
 
+        # start training
         tf.logging.info('Starting to train model. Current global step is %s'
                         % tf.train.global_step(self.sess, self.global_step))
         for _ in range(no_epochs):
@@ -367,6 +373,7 @@ class YoloV0(ANN):
                 t_0 = time.time()
                 imgs, labels = next(batch)
                 g_step = tf.train.global_step(self.sess, self.global_step)
+                # compute index for lr schedule
                 ind = 0
                 for k, e_step in enumerate(self.epoch_step):
                     if (g_step / no_batches) < e_step:
@@ -376,40 +383,46 @@ class YoloV0(ANN):
                         ind = k
                 lr = super().learning_rate(self.learning_rate[ind], g_step, self.lr_param[ind], self.lr_policy[ind],
                                            start_step)
+                # construct feed_dict
+                feed_dict = {self.x: imgs, self.y_true: labels,
+                             self.ph_learning_rate: lr,
+                             self.ph_wh_scale: self.wh_scale[ind],
+                             self.ph_xy_scale: self.xy_scale[ind],
+                             self.ph_noobj_scale: self.noobj_scale[ind],
+                             self.ph_train: True,
+                             self.ph_isobj_scale: self.isobj_scale[ind]}
+
+                if self.outputs_per_box > 5:
+                    feed_dict.update({self.ph_prob_noobj: self.prob_noobj[ind],
+                                      self.ph_prob_isobj: self.prob_isobj[ind]})
+                # write summary
                 if (g_step + 1) % summ_step == 0:
-                    s = self.sess.run(summary, feed_dict={self.x: imgs, self.y_true: labels,
-                                                          self.ph_learning_rate: lr,
-                                                          self.ph_wh_scale: self.wh_scale[ind],
-                                                          self.ph_xy_scale: self.xy_scale[ind],
-                                                          self.ph_noobj_scale: self.noobj_scale[ind],
-                                                          self.ph_train: True,
-                                                          self.ph_isobj_scale: self.isobj_scale[ind],
-                                                          self.ph_prob_noobj: self.prob_noobj[ind],
-                                                          self.ph_prob_isobj: self.prob_isobj[ind]})
+                    s = self.sess.run(summary, feed_dict=feed_dict)
                     summary_writer.add_summary(s, tf.train.global_step(self.sess, self.global_step))
                     summary_writer.flush()
-
+                # update weights
                 _, loss = self.sess.run([self.optimizer, self.loss],
-                                        feed_dict={self.x: imgs, self.y_true: labels,
-                                                   self.ph_learning_rate: lr,
-                                                   self.ph_wh_scale: self.wh_scale[ind],
-                                                   self.ph_xy_scale: self.xy_scale[ind],
-                                                   self.ph_noobj_scale: self.noobj_scale[ind],
-                                                   self.ph_train: True,
-                                                   self.ph_isobj_scale: self.isobj_scale[ind],
-                                                   self.ph_prob_noobj: self.prob_noobj[ind],
-                                                   self.ph_prob_isobj: self.prob_isobj[ind]})
+                                        feed_dict=feed_dict)
                 t_f = time.time() - t_0
+                # print updates
                 epoch = int(g_step / no_batches) + 1
                 tf.logging.info('Global step: %d, epoch: %d, loss: %.3f, Batch processed: %d/%d, '
                                 'Time to process batch: %.2f' % (g_step, epoch, loss, i + 1, no_batches, t_f))
-                tf.logging.info('Learning rate %.2e, xy scale: %.2e, wh scale: %.2e, noobj scale: %.2e, is obj scale: '
-                                '%.2e, prob noobj: %.2e, prob is obj: %.2e' % (lr, self.xy_scale[ind],
-                                                                               self.wh_scale[ind],
-                                                                               self.noobj_scale[ind],
-                                                                               self.isobj_scale[ind],
-                                                                               self.prob_noobj[ind],
-                                                                               self.prob_isobj[ind]))
+                if self.outputs_per_box > 5:
+                    tf.logging.info('Learning rate %.2e, xy scale: %.2e, wh scale: %.2e, noobj scale: %.2e, is obj '
+                                    'scale: %.2e, prob noobj: %.2e, prob is obj: %.2e' % (lr, self.xy_scale[ind],
+                                                                                          self.wh_scale[ind],
+                                                                                          self.noobj_scale[ind],
+                                                                                          self.isobj_scale[ind],
+                                                                                          self.prob_noobj[ind],
+                                                                                          self.prob_isobj[ind]))
+                else:
+                    tf.logging.info('Learning rate %.2e, xy scale: %.2e, wh scale: %.2e, noobj scale: %.2e, is obj '
+                                    'scale: %.2e' % (lr, self.xy_scale[ind],
+                                                     self.wh_scale[ind],
+                                                     self.noobj_scale[ind],
+                                                     self.isobj_scale[ind]))
+
             # save every epoch
             self.save(save_path, self.model_version)
             if do_test and (valid_set is not None):

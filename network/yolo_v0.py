@@ -126,7 +126,7 @@ class YoloV0(ANN):
                     c_noobj_loss = self.ph_noobj_scale * tf.reduce_sum(tf.multiply(no_obj, tf.pow(p_c - iou, 2)),
                                                                        name='c_noobj_loss')
 
-                if self.outputs_per_box == 6:
+                if self.outputs_per_box > 5:
                     with tf.variable_scope('p_prob'):
                         p_prob = y_pred[:, :, 5]
                     with tf.variable_scope('prob_obj_loss'):

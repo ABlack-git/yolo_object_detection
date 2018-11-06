@@ -137,11 +137,12 @@ class YoloV0(ANN):
                         prob_noobj_loss = self.ph_prob_noobj * tf.reduce_sum(
                             tf.multiply(no_obj, tf.pow(p_prob - is_obj, 2)),
                             name='prob_noobj_loss')
+                    self.summary_list.append(tf.summary.scalar('prob_obj_loss', prob_obj_loss))
+                    self.summary_list.append(tf.summary.scalar('prob_noobj_loss', prob_noobj_loss))
                     with tf.variable_scope('Loss'):
                         self.loss = tf.add_n([xy_loss, wh_loss, c_obj_loss, c_noobj_loss, prob_obj_loss,
                                               prob_noobj_loss], name='loss')
-                        self.summary_list.append(tf.summary.scalar('prob_obj_loss', prob_obj_loss))
-                        self.summary_list.append(tf.summary.scalar('prob_noobj_loss', prob_noobj_loss))
+
                 else:
                     self.loss = tf.add_n([xy_loss, wh_loss, c_obj_loss, c_noobj_loss], name='loss')
 

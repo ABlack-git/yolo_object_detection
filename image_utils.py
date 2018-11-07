@@ -2,7 +2,6 @@ import cv2
 import numpy as np
 import os
 import bbox_utils as bbu
-import stats_utils as su
 
 
 def draw_bbox(data, img, color=(0, 139, 0), thickness=2):
@@ -47,35 +46,8 @@ def list_of_images(path):
     return imgs
 
 
-def resize_img(img, h_new, w_new, preserve_as=True):
+def resize_img(img, image_h, image_w):
     height, width = img.shape[:2]
-    as_nom, as_denom = su.compute_aspectratio(width, height)  # 16:9,4:3,3:2, etc..
-    as_nom_new, as_denom_new = su.compute_aspectratio(w_new, h_new)
-    if preserve_as:
-        if (as_nom == as_nom_new) and (as_denom == as_denom_new):
-            pass
-        else:
-            tmp_h = int(w_new * (as_denom / as_nom))
-            if tmp_h > h_new:
-                w_new = int(h_new * (as_nom / as_denom))
-            else:
-                h_new = tmp_h
-
-    if height > h_new or width > w_new:
-        img = cv2.resize(img, (w_new, h_new), interpolation=cv2.INTER_AREA)
+    if height > image_h or width > image_w:
+        img = cv2.resize(img, (image_w, image_h), interpolation=cv2.INTER_AREA)
     return img
-
-
-def pad_img(img, h_new, w_new):
-    h, w = img.shape[:2]
-    if h == h_new and w == w_new:
-        return img
-    if h > h_new or w > w_new:
-        raise ValueError('Height and width of the input image should be less than height and with of the output.')
-
-    top = int(np.ceil((h_new - h) / 2))
-    bottom = int(np.floor((h_new - h) / 2))
-    left = int(np.ceil((w_new - w) / 2))
-    right = int(np.floor((w_new - w) / 2))
-
-    return cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=[0, 0, 0])

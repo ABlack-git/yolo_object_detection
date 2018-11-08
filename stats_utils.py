@@ -132,3 +132,15 @@ def progress_bar(count, total, prefix='', sufix=''):
     print('\r{} [{}] {} {}'.format(prefix, bar, percents, sufix), end='\r')
     if count == total:
         print()
+
+
+def compute_aspectratio(width: int, height: int):
+    def gcd(a, b):
+        return a if b == 0 else gcd(b, a % b)
+
+    if width == height:
+        return 1, 1
+    r = gcd(width, height)
+    x = int(width / r)
+    y = int(height / r)
+    return x, y

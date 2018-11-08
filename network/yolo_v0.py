@@ -150,8 +150,8 @@ class YoloV0(ANN):
                     self.loss = tf.add_n([xy_loss, wh_loss, c_obj_loss, c_noobj_loss], name='loss')
                 if self.weight_decay > 0:
                     with tf.variable_scope('l2_loss'):
-                        l2_loss = self.ph_weight_decay * tf.add_n(tf.nn.l2_loss(w, name='L2_loss')
-                                                                  for w in tf.trainable_variables())
+                        l2_loss = self.ph_weight_decay * tf.add_n([tf.nn.l2_loss(w, name='L2_loss')
+                                                                  for w in tf.trainable_variables()])
                     self.loss = self.loss + l2_loss
                     self.summary_list.append(tf.summary.scalar('l2_loss', l2_loss))
 

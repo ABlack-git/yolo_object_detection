@@ -28,6 +28,7 @@ class YoloV0(ANN):
         self.ph_prob_isobj = None
         self.ph_xy_scale = None
         self.ph_wh_scale = None
+        self.ph_weight_decay = None
         # Model parameters
         self.grid_size = None
         self.img_size = None
@@ -46,6 +47,7 @@ class YoloV0(ANN):
         self.lr_policy = None
         self.lr_param = None
         self.outputs_per_box = -1
+        self.weight_decay = -1
         # strings
         self.optimizer_type = ''
         self.model_version = ''
@@ -63,13 +65,14 @@ class YoloV0(ANN):
         self.ph_xy_scale = tf.placeholder(tf.float32, shape=(), name='xy_scale')
         self.ph_noobj_scale = tf.placeholder(tf.float32, shape=(), name='noobj_scale')
         self.ph_isobj_scale = tf.placeholder(tf.float32, shape=(), name='isobj_scale')
-
         self.ph_train = tf.placeholder(tf.bool, name='training')
         self.global_step = tf.Variable(0, name="global_step", trainable=False)
         self.init_network(self.cfg)
         if self.outputs_per_box > 5:
             self.ph_prob_noobj = tf.placeholder(tf.float32, shape=(), name='prob_noobj')
             self.ph_prob_isobj = tf.placeholder(tf.float32, shape=(), name='prob_noobj')
+        if self.weight_decay > 0:
+            self.ph_weight_decay = tf.placeholder(tf.float32, name='weight_decay')
         self.loss_func(self.predictions, self.y_true)
         self._optimizer(self.optimizer_type, self.optimizer_param, write_summary=self.write_grads)
 
@@ -145,6 +148,12 @@ class YoloV0(ANN):
 
                 else:
                     self.loss = tf.add_n([xy_loss, wh_loss, c_obj_loss, c_noobj_loss], name='loss')
+                if self.weight_decay > 0:
+                    with tf.variable_scope('l2_loss'):
+                        l2_loss = self.ph_weight_decay * tf.add_n(tf.nn.l2_loss(w, name='L2_loss')
+                                                                  for w in tf.trainable_variables())
+                    self.loss = self.loss + l2_loss
+                    self.summary_list.append(tf.summary.scalar('l2_loss', l2_loss))
 
                 self.summary_list.append(tf.summary.scalar('xy_loss', xy_loss))
                 self.summary_list.append(tf.summary.scalar('wh_loss', wh_loss))
@@ -189,6 +198,8 @@ class YoloV0(ANN):
                 self.model_version = parser.get(section, 'model_version')
                 self.optimizer_type = parser.get(section, 'optimizer')
                 # optional
+                if parser.has_option(section, 'weight_decay'):
+                    self.weight_decay = parser.getfloat(section, 'weight_decay')
                 if parser.has_option(section, 'lr_policy'):
                     self.lr_policy = [val for val in parser.get(section, 'lr_policy').split(',')]
                     if len(self.lr_policy) != len(self.epoch_step):
@@ -396,6 +407,8 @@ class YoloV0(ANN):
                 if self.outputs_per_box > 5:
                     feed_dict.update({self.ph_prob_noobj: self.prob_noobj[ind],
                                       self.ph_prob_isobj: self.prob_isobj[ind]})
+                if self.weight_decay > 0:
+                    feed_dict.update({self.ph_weight_decay: self.weight_decay})
                 # write summary
                 if (g_step + 1) % summ_step == 0:
                     s = self.sess.run(summary, feed_dict=feed_dict)

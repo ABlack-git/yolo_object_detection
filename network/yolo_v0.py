@@ -521,7 +521,8 @@ class YoloV0(ANN):
             raise TypeError
         preds = self.sess.run(self.predictions, feed_dict={self.x: x, self.ph_train: False})
         preds = self.predictions_to_boxes(preds)
-        preds = bbu.convert_center_to_2points(preds)
+        preds = self.convert_coords(preds)
+        # preds = bbu.convert_center_to_2points(preds)
         ret = []
         for img in preds:
             ret.append(self.non_max_suppression(img))

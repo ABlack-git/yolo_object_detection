@@ -77,7 +77,7 @@ class YoloV0(ANN):
         self._optimizer(self.optimizer_type, self.optimizer_param, write_summary=self.write_grads)
 
         self.sess.run(tf.global_variables_initializer())
-        self.saver = tf.train.Saver(max_to_keep=10)
+        self.saver = tf.train.Saver(max_to_keep=30)
 
     def loss_func(self, y_pred, y_true):
         if not self.loss:

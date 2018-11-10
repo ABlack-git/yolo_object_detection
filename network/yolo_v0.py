@@ -151,7 +151,7 @@ class YoloV0(ANN):
                 if self.weight_decay > 0:
                     with tf.variable_scope('l2_loss'):
                         l2_loss = self.ph_weight_decay * tf.add_n([tf.nn.l2_loss(w, name='L2_loss')
-                                                                  for w in tf.trainable_variables()])
+                                                                   for w in tf.trainable_variables()])
                     self.loss = self.loss + l2_loss
                     self.summary_list.append(tf.summary.scalar('l2_loss', l2_loss))
 
@@ -734,8 +734,9 @@ class YoloV0(ANN):
             stats = su.compute_stats(preds, true_boxes, iou_threshold, stats)
             su.progress_bar(i, num_batches, prefix=prefix)
         final_stats = su.process_stats(stats)
-        print('Average precision: {0[0]}, Average recall: {0[1]}, Average iou: {0[2]}, '
-              'Average confidence of TP: {0[3]}, '
-              'Average confidence of FP: {0[4]}, Total num of TP: {0[5]}, Total num of FP: {0[6]}, '
+        print(prefix)
+        print('Average precision: {0[0]:.3f}, Average recall: {0[1]:.3f}, Average iou: {0[2]:.3f}, '
+              'Average confidence of TP: {0[3]:.3f}, '
+              'Average confidence of FP: {0[4]:.3f}, Total num of TP: {0[5]}, Total num of FP: {0[6]}, '
               'Total num of FN: {0[7]}'.format(final_stats))
         return final_stats

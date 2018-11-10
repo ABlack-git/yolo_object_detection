@@ -541,7 +541,7 @@ class YoloV0(ANN):
             ret.append(self.non_max_suppression(img))
         return ret
 
-    def predictions_to_boxes(self, in_preds, last_dim_size=6):
+    def predictions_to_boxes(self, in_preds):
         """
         Coverts predictions of network to bounding box format.
         :param in_preds: Predictions of the network. Shape [batch_size,S*S*5].
@@ -550,7 +550,7 @@ class YoloV0(ANN):
         Shape of returned tensor is [batch_size, S*S, 5]
         """
         preds = np.copy(in_preds)
-        preds = np.reshape(preds, [len(preds), self.grid_size[0] * self.grid_size[1], last_dim_size])
+        preds = np.reshape(preds, [len(preds), self.grid_size[0] * self.grid_size[1], self.outputs_per_box])
         counter_i = 0
         counter_j = 0
         for i in range(self.grid_size[0] * self.grid_size[1]):

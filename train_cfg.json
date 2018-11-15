@@ -1,5 +1,5 @@
 {
-  "net_cfg": "E:\\Andrew\\project\\yolo_object_detection\\cfg\\model_6l_v1_3.cfg",
+  "net_cfg": "E:\\Andrew\\project\\yolo_object_detection\\cfg\\model_8l_v1_1.cfg",
   "weights": null,
   "training_set": {
     "images": [
@@ -30,8 +30,8 @@
     ]
   },
   "parameters": {
-    "num_epochs": 5,
-    "do_test": false,
+    "num_epochs": 15,
+    "do_test": true,
     "summary_step": 100,
     "summary_path": "E:\\Andrew\\Ann_models\\summaries",
     "save_path": "E:\\Andrew\\Ann_models\\weights",

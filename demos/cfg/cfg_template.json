@@ -1,25 +1,25 @@
 {
   "images": [
-    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Images/MiniDrone",
-    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Images/Okutama",
-    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Images/UFC",
-    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Images/VIRAT"
+    "E:\\Andrew\\DS\\Testing Set\\Images\\MiniDrone",
+    "E:\\Andrew\\DS\\Testing Set\\Images\\Okutama",
+    "E:\\Andrew\\DS\\Testing set\\Images\\UFC",
+    "E:\\Andrew\\DS\\Testing set\\Images\\VIRAT"
   ],
   "annotations": [
-    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Annotations/MiniDrone",
-    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Annotations/Okutama",
-    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Annotations/UFC",
-    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Annotations/Virat"
+    "E:\\Andrew\\DS\\Testing Set\\Annotations\\MiniDrone",
+    "E:\\Andrew\\DS\\Testing Set\\Annotations\\Okutama",
+    "E:\\Andrew\\DS\\Testing set\\Annotations\\UFC",
+    "E:\\Andrew\\DS\\Testing set\\Annotations\\VIRAT"
   ],
-  "weights": "",
+  "weights": "E:\\Andrew\\Ann_models\\weights\\model_6l_v1_3\\model_6l_v1_3-38340",
   "configuration": {
-    "draw_grid": false,
+    "draw_grid": true,
     "draw_centers": false,
-    "no_time": false,
-    "delay": 0,
-    "iou_threshold": 0.5,
+    "print_time": true,
+    "delay": 20,
+    "iou_threshold": 0.35,
     "modes": {
-      "stats": true,
+      "stats": {"enable": true, "save": true, "path": "E:\\Andrew\\Stats"},
       "images": true,
       "video": false
     }

@@ -125,12 +125,12 @@ def compute_distance(bb_a, bb_b):
 
 def progress_bar(count, total, prefix='', sufix=''):
     bar_len = 60
-    filled_len = int(round(bar_len * count / float(total)))
+    filled_len = int(round(bar_len * count / float(total - 1)))
 
-    percents = round(100.0 * count / float(total), 1)
+    percents = round(100.0 * count / float(total - 1), 1)
     bar = '*' * filled_len + '-' * (bar_len - filled_len)
     print('\r{} [{}] {} {}'.format(prefix, bar, percents, sufix), end='\r')
-    if count == total:
+    if count == total - 1:
         print()
 
 

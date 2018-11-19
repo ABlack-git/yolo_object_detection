@@ -51,6 +51,7 @@ class YoloV0(ANN):
         self.restored = False
         self.write_grads = False
         self.sqrt = True
+        self.keep_asp_ratio = False
         # Model initialization
         self.open_sess()
         self.__create_network()
@@ -210,6 +211,9 @@ class YoloV0(ANN):
                 else:
                     self.write_grads = False
 
+                if parser.has_option(section, 'keep_asp_ratio'):
+                    self.keep_asp_ratio = parser.getboolean(section, 'keep_asp_ratio')
+
             elif section.startswith('CONV'):
                 name = section
                 w_shape = [int(val) for val in parser.get(section, 'w_shape').split(',')]
@@ -328,7 +332,7 @@ class YoloV0(ANN):
                   'configuration': {"img_size": {'width': self.img_size[0], 'height': self.img_size[1]},
                                     'grid_size': {'width': self.grid_size[0], 'height': self.grid_size[1]},
                                     'no_boxes': self.no_boxes,
-                                    'shuffle': True, 'sqrt': self.sqrt}}
+                                    'shuffle': True, 'sqrt': self.sqrt, 'keep_asp_ratio': self.keep_asp_ratio}}
         train_set = DatasetGenerator(json.dumps(ts_cfg))
         train_test_set = None
         if do_test:
@@ -337,7 +341,7 @@ class YoloV0(ANN):
                           'configuration': {"img_size": {'width': self.img_size[0], 'height': self.img_size[1]},
                                             'grid_size': {'width': self.grid_size[0], 'height': self.grid_size[1]},
                                             'no_boxes': self.no_boxes,
-                                            'shuffle': True, 'sqrt': self.sqrt}}
+                                            'shuffle': True, 'sqrt': self.sqrt, 'keep_asp_ratio': self.keep_asp_ratio}}
                 valid_set = DatasetGenerator(json.dumps(vs_cfg))
                 ts_cfg['configuration']['subset_length'] = valid_set.get_dataset_size()
             else:

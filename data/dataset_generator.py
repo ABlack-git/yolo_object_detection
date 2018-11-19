@@ -3,6 +3,7 @@ import random
 import cv2
 import numpy as np
 import json
+import image_utils as imu
 
 
 class DatasetGenerator:
@@ -18,6 +19,7 @@ class DatasetGenerator:
         self.no_boxes = None
         self.sqrt = False
         self.shuffle = False
+        self.keep_asp_ratio = False
         self.subset_length = -1
         self.data_imgs = []
         self.data_labels = []
@@ -48,6 +50,7 @@ class DatasetGenerator:
         self.no_boxes = config['no_boxes']
         self.shuffle = config['shuffle']
         self.sqrt = config['sqrt']
+        self.keep_asp_ratio = config['keep_asp_ratio']
         if "subset_length" in config:
             self.subset_length = config['subset_length']
 
@@ -61,7 +64,7 @@ class DatasetGenerator:
         self.data_labels.sort()
         self.data_imgs.sort()
         # shuffle dataset
-        self.reshuffle()
+        self.__reshuffle()
         # check if img correspond to label
         for a, b in zip(self.data_imgs, self.data_labels):
             if os.path.basename(a).replace('.jpg', '') != os.path.basename(b).replace('.txt', ''):
@@ -72,12 +75,12 @@ class DatasetGenerator:
             tmp = list(zip(self.data_imgs, self.data_labels))
             self.data_imgs, self.data_labels = zip(*random.sample(tmp, self.subset_length))
 
-    def reshuffle(self):
+    def __reshuffle(self):
         ziped = list(zip(self.data_imgs, self.data_labels))
         random.shuffle(ziped)
         self.data_imgs, self.data_labels = zip(*ziped)
 
-    def get_boxes(self, txt_name):
+    def __get_boxes(self, txt_name):
         with open(txt_name, 'r') as file:
             coords = file.read().splitlines()
         if coords[0] == 'None':
@@ -94,19 +97,32 @@ class DatasetGenerator:
             img = cv2.resize(img, (self.image_w, self.image_h), interpolation=cv2.INTER_AREA)
         return img
 
-    def __resize_and_adjust_labels(self, orgn_size, boxes, resize_only=False):
+    def __resize_and_adjust_labels(self, orgn_size, current_size, boxes, resize_only=False):
         label = np.zeros(5 * self.no_boxes * self.grid_h * self.grid_w)
         if boxes is None:
-            return label
+            if resize_only:
+                return np.array([])
+            else:
+                return label
 
-        w_ratio = self.image_w / orgn_size[1]
-        h_ratio = self.image_h / orgn_size[0]
+        if self.keep_asp_ratio:
+            w_ratio = current_size[1] / orgn_size[1]
+            h_ratio = current_size[0] / orgn_size[0]
+        else:
+            w_ratio = self.image_w / orgn_size[1]
+            h_ratio = self.image_h / orgn_size[0]
 
         if w_ratio != 1 and h_ratio != 1:
             boxes[:, 0] = np.round(boxes[:, 0] * w_ratio)
             boxes[:, 1] = np.round(boxes[:, 1] * h_ratio)
             boxes[:, 2] = np.round(boxes[:, 2] * w_ratio)
             boxes[:, 3] = np.round(boxes[:, 3] * h_ratio)
+
+        if self.keep_asp_ratio:
+            shift_x = int(np.ceil((self.image_w - current_size[1]) / 2))
+            shift_y = int(np.ceil((self.image_h - current_size[0]) / 2))
+            boxes[:, 0] = boxes[:, 0] + shift_x
+            boxes[:, 1] = boxes[:, 1] + shift_y
 
         if resize_only:
             return boxes
@@ -138,7 +154,7 @@ class DatasetGenerator:
         return int(np.floor(len(self.data_labels) / batch_size))
 
     def get_minibatch(self, batch_size, resize_only=False):
-        self.reshuffle()
+        self.__reshuffle()
         images = []
         labels = []
         empty = False
@@ -146,12 +162,8 @@ class DatasetGenerator:
         while True:
             # OpenCV returns image as (height,width,channels), where channels are BGR.
             img = cv2.imread(self.data_imgs[counter], cv2.IMREAD_COLOR)
-            height, width = img.shape[:2]
-            boxes = self.get_boxes(self.data_labels[counter])
-            # resize img
-            img = self.resize_img(img)
-            # resize and adujst labels
-            boxes = self.__resize_and_adjust_labels((height, width), boxes, resize_only)
+            boxes = self.__get_boxes(self.data_labels[counter])
+            img, boxes = self.__adjust_ground_truths(img, boxes, resize_only)
             images.append(img)
             labels.append(boxes)
             counter += 1
@@ -174,3 +186,13 @@ class DatasetGenerator:
 
     def get_dataset_size(self):
         return len(self.data_imgs)
+
+    def __adjust_ground_truths(self, img, boxes, resize_only):
+        h_0, w_0 = img.shape[:2]
+        img = imu.resize_img(img, self.image_h, self.image_w, self.keep_asp_ratio)
+        h_1, w_1 = img.shape[:2]
+        if self.keep_asp_ratio:
+            img = imu.pad_img(img, self.image_h, self.image_w)
+        bboxes = self.__resize_and_adjust_labels((h_0, w_0), (h_1, w_1), boxes, resize_only)
+
+        return img, bboxes

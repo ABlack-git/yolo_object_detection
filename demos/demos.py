@@ -14,7 +14,8 @@ def test_model(net, images, labels, iou_threshold, save_stats, path=''):
     # construct json
     img_size = {"width": net.img_size[0], "height": net.img_size[1]}
     grid_size = {"width": net.grid_size[0], "height": net.grid_size[1]}
-    params = {"img_size": img_size, "grid_size": grid_size, "no_boxes": net.no_boxes, "shuffle": True, "sqrt": net.sqrt}
+    params = {"img_size": img_size, "grid_size": grid_size, "no_boxes": net.no_boxes, "shuffle": True, "sqrt": net.sqrt,
+              'keep_asp_ratio': net.keep_asp_ratio}
     conf = {"images": images, "annotations": labels, "configuration": params}
     conf = json.dumps(conf)
 

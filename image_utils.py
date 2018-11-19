@@ -47,11 +47,11 @@ def list_of_images(path):
     return imgs
 
 
-def resize_img(img, h_new, w_new, preserve_as=True):
+def resize_img(img, h_new, w_new, keep_asp_ratio=True):
     height, width = img.shape[:2]
     as_nom, as_denom = su.compute_aspectratio(width, height)  # 16:9,4:3,3:2, etc..
     as_nom_new, as_denom_new = su.compute_aspectratio(w_new, h_new)
-    if preserve_as:
+    if keep_asp_ratio:
         if (as_nom == as_nom_new) and (as_denom == as_denom_new):
             pass
         else:

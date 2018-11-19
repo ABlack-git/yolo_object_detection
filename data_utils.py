@@ -2,7 +2,7 @@ import os
 import numpy as np
 
 
-def list_dir(paths, file_ext):
+def list_dirs(paths, file_ext):
     if isinstance(paths, str):
         paths = [paths]
     labels = []

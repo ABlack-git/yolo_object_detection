@@ -1,0 +1,13 @@
+{
+  "mode": "sample",
+  "data_type": "images",
+  "path_type": "folders",
+  "labels_type": "txt_vdrone",
+  "save_location": "/Volumes/TRANSCEND/Data Sets/VD_sampled/Validation set",
+  "data_path": [
+    "/Volumes/TRANSCEND/Data Sets/VisDrone/VisDrone2018-DET-val/images"
+  ],
+  "labels_path": [
+    "/Volumes/TRANSCEND/Data Sets/VisDrone/VisDrone2018-DET-val/annotations"
+  ]
+}

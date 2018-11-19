@@ -1,0 +1,11 @@
+{
+  "data_type": "videos",
+  "path_type": "folders",
+  "labels_type": "xgtf_UFC2",
+  "data_path": [
+    "/Volumes/TRANSCEND/Data Sets/UFC/aerial_tapes"
+  ],
+  "labels_path": [
+    "/Volumes/TRANSCEND/Data Sets/UFC/annotations/aerial_annots"
+  ]
+}

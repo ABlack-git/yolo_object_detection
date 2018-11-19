@@ -1,0 +1,11 @@
+{
+  "data_type": "videos/images",
+  "path_type": "folders/single_file/multiple_files",
+  "labels_type": "my_ds/txt_virat/txt_okutama/xgtf_mdrone/xgtf_UFC1/xgtf_UFC2/txt_vdrone",
+  "data_path": [
+    ""
+  ],
+  "labels_path": [
+    ""
+  ]
+}

@@ -22,16 +22,19 @@ class YoloV0(ANN):
         self.saver = None
         self.ph_learning_rate = None
         self.ph_train = None
-        self.ph_coord_scale = None
         self.ph_noobj_scale = None
         self.ph_isobj_scale = None
         self.ph_prob_noobj = None
         self.ph_prob_isobj = None
+        self.ph_xy_scale = None
+        self.ph_wh_scale = None
+        self.ph_weight_decay = None
         # Model parameters
         self.grid_size = None
         self.img_size = None
         self.epoch_step = None
-        self.coord_scale = None
+        self.xy_scale = None
+        self.wh_scale = None
         self.noobj_scale = None
         self.isobj_scale = None
         self.prob_noobj = None
@@ -39,11 +42,12 @@ class YoloV0(ANN):
         self.batch_size = None
         self.learning_rate = None
         self.nms_threshold = None
-        self.conf_threshold = 0.5
         self.no_boxes = 1
         self.optimizer_param = None
         self.lr_policy = None
         self.lr_param = None
+        self.outputs_per_box = -1
+        self.weight_decay = -1
         # strings
         self.optimizer_type = ''
         self.model_version = ''
@@ -58,24 +62,29 @@ class YoloV0(ANN):
 
     def __create_network(self):
         self.ph_learning_rate = tf.placeholder(tf.float32, shape=(), name='learning_rate')
-        self.ph_coord_scale = tf.placeholder(tf.float32, shape=(), name='coord_scale')
+        self.ph_wh_scale = tf.placeholder(tf.float32, shape=(), name='wh_scale')
+        self.ph_xy_scale = tf.placeholder(tf.float32, shape=(), name='xy_scale')
         self.ph_noobj_scale = tf.placeholder(tf.float32, shape=(), name='noobj_scale')
         self.ph_isobj_scale = tf.placeholder(tf.float32, shape=(), name='isobj_scale')
-        self.ph_prob_noobj = tf.placeholder(tf.float32, shape=(), name='prob_noobj')
-        self.ph_prob_isobj = tf.placeholder(tf.float32, shape=(), name='prob_noobj')
         self.ph_train = tf.placeholder(tf.bool, name='training')
         self.global_step = tf.Variable(0, name="global_step", trainable=False)
         self.init_network(self.cfg)
+        if self.outputs_per_box > 5:
+            self.ph_prob_noobj = tf.placeholder(tf.float32, shape=(), name='prob_noobj')
+            self.ph_prob_isobj = tf.placeholder(tf.float32, shape=(), name='prob_noobj')
+        if self.weight_decay > 0:
+            self.ph_weight_decay = tf.placeholder(tf.float32, name='weight_decay')
         self.loss_func(self.predictions, self.y_true)
         self._optimizer(self.optimizer_type, self.optimizer_param, write_summary=self.write_grads)
 
         self.sess.run(tf.global_variables_initializer())
-        self.saver = tf.train.Saver(max_to_keep=10)
+        self.saver = tf.train.Saver(max_to_keep=30)
 
     def loss_func(self, y_pred, y_true):
         if not self.loss:
             with tf.name_scope('Loss_function'):
-                y_pred = tf.reshape(y_pred, [-1, self.grid_size[0] * self.grid_size[1], 6], name='reshape_pred')
+                y_pred = tf.reshape(y_pred, [-1, self.grid_size[0] * self.grid_size[1], self.outputs_per_box],
+                                    name='reshape_pred')
                 y_true = tf.reshape(y_true, [-1, self.grid_size[0] * self.grid_size[1], 5], name='reshape_truth')
                 # define name scopes for better representation in tensorboard
                 with tf.variable_scope('is_obj'):
@@ -98,14 +107,12 @@ class YoloV0(ANN):
                     p_h = y_pred[:, :, 3]
                 with tf.variable_scope('p_c'):
                     p_c = y_pred[:, :, 4]
-                with tf.variable_scope('p_prob'):
-                    p_prob = y_pred[:, :, 5]
 
                 with tf.name_scope('XY_LOSS'):
-                    xy_loss = self.ph_coord_scale * tf.reduce_sum(
+                    xy_loss = self.ph_xy_scale * tf.reduce_sum(
                         tf.multiply(is_obj, tf.pow(p_x - t_x, 2) + tf.pow(p_y - t_y, 2)), name='xy_loss')
                 with tf.name_scope('WH_LOSS'):
-                    wh_loss = self.ph_coord_scale * tf.reduce_sum(
+                    wh_loss = self.ph_wh_scale * tf.reduce_sum(
                         tf.multiply(is_obj, tf.pow(p_w - t_w, 2) + tf.pow(p_h - t_h, 2)), name='wh_loss')
 
                 # calculate confidance
@@ -122,23 +129,37 @@ class YoloV0(ANN):
                 with tf.variable_scope('noobj_loss'):
                     c_noobj_loss = self.ph_noobj_scale * tf.reduce_sum(tf.multiply(no_obj, tf.pow(p_c - iou, 2)),
                                                                        name='c_noobj_loss')
-                with tf.variable_scope('prob_obj_loss'):
-                    prob_obj_loss = self.ph_prob_isobj * tf.reduce_sum(tf.multiply(is_obj, tf.pow(p_prob - is_obj, 2)),
-                                                                       name='prob_obj_loss')
-                with tf.variable_scope('prob_noobj_loss'):
-                    prob_noobj_loss = self.ph_prob_noobj * tf.reduce_sum(
-                        tf.multiply(no_obj, tf.pow(p_prob - is_obj, 2)),
-                        name='prob_noobj_loss')
-                with tf.variable_scope('Loss'):
-                    self.loss = tf.add_n([xy_loss, wh_loss, c_obj_loss, c_noobj_loss, prob_obj_loss, prob_noobj_loss],
-                                         name='loss')
+
+                if self.outputs_per_box > 5:
+                    with tf.variable_scope('p_prob'):
+                        p_prob = y_pred[:, :, 5]
+                    with tf.variable_scope('prob_obj_loss'):
+                        prob_obj_loss = self.ph_prob_isobj * tf.reduce_sum(
+                            tf.multiply(is_obj, tf.pow(p_prob - is_obj, 2)),
+                            name='prob_obj_loss')
+                    with tf.variable_scope('prob_noobj_loss'):
+                        prob_noobj_loss = self.ph_prob_noobj * tf.reduce_sum(
+                            tf.multiply(no_obj, tf.pow(p_prob - is_obj, 2)),
+                            name='prob_noobj_loss')
+                    self.summary_list.append(tf.summary.scalar('prob_obj_loss', prob_obj_loss))
+                    self.summary_list.append(tf.summary.scalar('prob_noobj_loss', prob_noobj_loss))
+                    with tf.variable_scope('Loss'):
+                        self.loss = tf.add_n([xy_loss, wh_loss, c_obj_loss, c_noobj_loss, prob_obj_loss,
+                                              prob_noobj_loss], name='loss')
+
+                else:
+                    self.loss = tf.add_n([xy_loss, wh_loss, c_obj_loss, c_noobj_loss], name='loss')
+                if self.weight_decay > 0:
+                    with tf.variable_scope('l2_loss'):
+                        l2_loss = self.ph_weight_decay * tf.add_n([tf.nn.l2_loss(w, name='L2_loss')
+                                                                   for w in tf.trainable_variables()])
+                    self.loss = self.loss + l2_loss
+                    self.summary_list.append(tf.summary.scalar('l2_loss', l2_loss))
 
                 self.summary_list.append(tf.summary.scalar('xy_loss', xy_loss))
                 self.summary_list.append(tf.summary.scalar('wh_loss', wh_loss))
                 self.summary_list.append(tf.summary.scalar('c_obj_loss', c_obj_loss))
                 self.summary_list.append(tf.summary.scalar('c_noobj_loss', c_noobj_loss))
-                self.summary_list.append(tf.summary.scalar('prob_obj_loss', prob_obj_loss))
-                self.summary_list.append(tf.summary.scalar('prob_noobj_loss', prob_noobj_loss))
                 self.summary_list.append(tf.summary.scalar('Loss', self.loss))
                 self.summary_list.append(tf.summary.histogram('is_obj', is_obj))
                 self.summary_list.append(tf.summary.histogram('no_obj', no_obj))
@@ -159,28 +180,27 @@ class YoloV0(ANN):
                                              name='labels')
                 self.epoch_step = [int(val) for val in parser.get(section, 'epoch_step').split(',')]
                 self.learning_rate = [float(val) for val in parser.get(section, 'learning_rate').split(',')]
-                self.coord_scale = [float(val) for val in parser.get(section, 'coord_scale').split(',')]
+                self.xy_scale = [float(val) for val in parser.get(section, 'xy_scale').split(',')]
+                self.wh_scale = [float(val) for val in parser.get(section, 'wh_scale').split(',')]
                 self.noobj_scale = [float(val) for val in parser.get(section, 'noobj_scale').split(',')]
                 self.isobj_scale = [float(val) for val in parser.get(section, 'isobj_scale').split(',')]
-                self.prob_noobj = [float(val) for val in parser.get(section, 'prob_noobj').split(',')]
-                self.prob_isobj = [float(val) for val in parser.get(section, 'prob_isobj').split(',')]
+
                 if len(self.learning_rate) != len(self.epoch_step):
                     raise ValueError('Length of learning rate array is not equal to epoch step array')
-                if len(self.coord_scale) != len(self.epoch_step):
-                    raise ValueError('Length of coord scale array is not equal to epoch step array')
+                if (len(self.xy_scale) != len(self.epoch_step)) or (len(self.wh_scale) != len(self.epoch_step)):
+                    raise ValueError('Length of xy or wh scale arrays is not equal to epoch step array')
                 if len(self.noobj_scale) != len(self.epoch_step):
                     raise ValueError('Length of noobj scale array is not equal to epoch step array')
                 if len(self.isobj_scale) != len(self.epoch_step):
                     raise ValueError('Length of isobj scale array is not equal to epoch step array')
-                if len(self.prob_noobj) != len(self.epoch_step):
-                    raise ValueError('Length of prob noobj array is not equal to epoch step array')
-                if len(self.prob_isobj) != len(self.epoch_step):
-                    raise ValueError('Length of prob isobj array is not equal to epoch step array')
+
                 self.nms_threshold = parser.getfloat(section, 'nms_threshold')
                 self.batch_size = parser.getint(section, 'batch_size')
                 self.model_version = parser.get(section, 'model_version')
                 self.optimizer_type = parser.get(section, 'optimizer')
                 # optional
+                if parser.has_option(section, 'weight_decay'):
+                    self.weight_decay = parser.getfloat(section, 'weight_decay')
                 if parser.has_option(section, 'lr_policy'):
                     self.lr_policy = [val for val in parser.get(section, 'lr_policy').split(',')]
                     if len(self.lr_policy) != len(self.epoch_step):
@@ -210,6 +230,17 @@ class YoloV0(ANN):
                     self.write_grads = parser.getboolean(section, 'write_grads')
                 else:
                     self.write_grads = False
+                if parser.has_option(section, 'outputs_per_box'):
+                    self.outputs_per_box = parser.getint(section, 'outputs_per_box')
+                    if self.outputs_per_box > 5:
+                        self.prob_noobj = [float(val) for val in parser.get(section, 'prob_noobj').split(',')]
+                        self.prob_isobj = [float(val) for val in parser.get(section, 'prob_isobj').split(',')]
+                        if len(self.prob_noobj) != len(self.epoch_step):
+                            raise ValueError('Length of prob noobj array is not equal to epoch step array')
+                        if len(self.prob_isobj) != len(self.epoch_step):
+                            raise ValueError('Length of prob isobj array is not equal to epoch step array')
+                else:
+                    self.outputs_per_box = 5
 
                 if parser.has_option(section, 'keep_asp_ratio'):
                     self.keep_asp_ratio = parser.getboolean(section, 'keep_asp_ratio')
@@ -348,6 +379,7 @@ class YoloV0(ANN):
                 ts_cfg['configuration']['subset_length'] = int(train_set.get_dataset_size() / 10)
             train_test_set = DatasetGenerator(json.dumps(ts_cfg))
 
+        # start training
         tf.logging.info('Starting to train model. Current global step is %s'
                         % tf.train.global_step(self.sess, self.global_step))
         for _ in range(no_epochs):
@@ -357,6 +389,7 @@ class YoloV0(ANN):
                 t_0 = time.time()
                 imgs, labels = next(batch)
                 g_step = tf.train.global_step(self.sess, self.global_step)
+                # compute index for lr schedule
                 ind = 0
                 for k, e_step in enumerate(self.epoch_step):
                     if (g_step / no_batches) < e_step:
@@ -366,37 +399,48 @@ class YoloV0(ANN):
                         ind = k
                 lr = super().learning_rate(self.learning_rate[ind], g_step, self.lr_param[ind], self.lr_policy[ind],
                                            start_step)
+                # construct feed_dict
+                feed_dict = {self.x: imgs, self.y_true: labels,
+                             self.ph_learning_rate: lr,
+                             self.ph_wh_scale: self.wh_scale[ind],
+                             self.ph_xy_scale: self.xy_scale[ind],
+                             self.ph_noobj_scale: self.noobj_scale[ind],
+                             self.ph_train: True,
+                             self.ph_isobj_scale: self.isobj_scale[ind]}
+
+                if self.outputs_per_box > 5:
+                    feed_dict.update({self.ph_prob_noobj: self.prob_noobj[ind],
+                                      self.ph_prob_isobj: self.prob_isobj[ind]})
+                if self.weight_decay > 0:
+                    feed_dict.update({self.ph_weight_decay: self.weight_decay})
+                # write summary
                 if (g_step + 1) % summ_step == 0:
-                    val_t0 = time.time()
-                    s = self.sess.run(summary, feed_dict={self.x: imgs, self.y_true: labels,
-                                                          self.ph_learning_rate: lr,
-                                                          self.ph_coord_scale: self.coord_scale[ind],
-                                                          self.ph_noobj_scale: self.noobj_scale[ind],
-                                                          self.ph_train: True,
-                                                          self.ph_isobj_scale: self.isobj_scale[ind],
-                                                          self.ph_prob_noobj: self.prob_noobj[ind],
-                                                          self.ph_prob_isobj: self.prob_isobj[ind]})
+                    s = self.sess.run(summary, feed_dict=feed_dict)
                     summary_writer.add_summary(s, tf.train.global_step(self.sess, self.global_step))
                     summary_writer.flush()
-
+                # update weights
                 _, loss = self.sess.run([self.optimizer, self.loss],
-                                        feed_dict={self.x: imgs, self.y_true: labels,
-                                                   self.ph_learning_rate: lr,
-                                                   self.ph_coord_scale: self.coord_scale[ind],
-                                                   self.ph_noobj_scale: self.noobj_scale[ind],
-                                                   self.ph_train: True,
-                                                   self.ph_isobj_scale: self.isobj_scale[ind],
-                                                   self.ph_prob_noobj: self.prob_noobj[ind],
-                                                   self.ph_prob_isobj: self.prob_isobj[ind]})
+                                        feed_dict=feed_dict)
                 t_f = time.time() - t_0
+                # print updates
                 epoch = int(g_step / no_batches) + 1
                 tf.logging.info('Global step: %d, epoch: %d, loss: %.3f, Batch processed: %d/%d, '
                                 'Time to process batch: %.2f' % (g_step, epoch, loss, i + 1, no_batches, t_f))
-                tf.logging.info('Learning rate %.2e, coord scale: %.2e, noobj scale: %.2e, is obj scale: %.2e, '
-                                'prob noobj: %.2e, prob is obj: %.2e' % (lr, self.coord_scale[ind],
-                                                                         self.noobj_scale[ind], self.isobj_scale[ind],
-                                                                         self.prob_noobj[ind],
-                                                                         self.prob_isobj[ind]))
+                if self.outputs_per_box > 5:
+                    tf.logging.info('Learning rate %.2e, xy scale: %.2e, wh scale: %.2e, noobj scale: %.2e, is obj '
+                                    'scale: %.2e, prob noobj: %.2e, prob is obj: %.2e' % (lr, self.xy_scale[ind],
+                                                                                          self.wh_scale[ind],
+                                                                                          self.noobj_scale[ind],
+                                                                                          self.isobj_scale[ind],
+                                                                                          self.prob_noobj[ind],
+                                                                                          self.prob_isobj[ind]))
+                else:
+                    tf.logging.info('Learning rate %.2e, xy scale: %.2e, wh scale: %.2e, noobj scale: %.2e, is obj '
+                                    'scale: %.2e' % (lr, self.xy_scale[ind],
+                                                     self.wh_scale[ind],
+                                                     self.noobj_scale[ind],
+                                                     self.isobj_scale[ind]))
+
             # save every epoch
             self.save(save_path, self.model_version)
             if do_test and (valid_set is not None):
@@ -494,13 +538,14 @@ class YoloV0(ANN):
             raise TypeError
         preds = self.sess.run(self.predictions, feed_dict={self.x: x, self.ph_train: False})
         preds = self.predictions_to_boxes(preds)
-        preds = bbu.convert_center_to_2points(preds)
+        preds = self.convert_coords(preds)
+        # preds = bbu.convert_center_to_2points(preds)
         ret = []
         for img in preds:
             ret.append(self.non_max_suppression(img))
         return ret
 
-    def predictions_to_boxes(self, in_preds, last_dim_size=6):
+    def predictions_to_boxes(self, in_preds):
         """
         Coverts predictions of network to bounding box format.
         :param in_preds: Predictions of the network. Shape [batch_size,S*S*5].
@@ -509,7 +554,7 @@ class YoloV0(ANN):
         Shape of returned tensor is [batch_size, S*S, 5]
         """
         preds = np.copy(in_preds)
-        preds = np.reshape(preds, [len(preds), self.grid_size[0] * self.grid_size[1], last_dim_size])
+        preds = np.reshape(preds, [len(preds), self.grid_size[0] * self.grid_size[1], self.outputs_per_box])
         counter_i = 0
         counter_j = 0
         for i in range(self.grid_size[0] * self.grid_size[1]):
@@ -649,7 +694,8 @@ class YoloV0(ANN):
                     self.ph_train = graph.get_tensor_by_name('training:0')
                     self.ph_learning_rate = graph.get_tensor_by_name('learning_rate:0')
                     self.ph_noobj_scale = graph.get_tensor_by_name('noobj_scale:0')
-                    self.ph_coord_scale = graph.get_tensor_by_name('coord_scale:0')
+                    self.ph_xy_scale = graph.get_tensor_by_name('xy_scale:0')
+                    self.ph_wh_scale = graph.get_tensor_by_name('wh_scale:0')
                     self.ph_isobj_scale = graph.get_tensor_by_name('isobj_scale:0')
                     # self.saver = tf.train.Saver(max_to_keep=10)
                     self.restored = True
@@ -692,8 +738,9 @@ class YoloV0(ANN):
             stats = su.compute_stats(preds, true_boxes, iou_threshold, stats)
             su.progress_bar(i, num_batches, prefix=prefix)
         final_stats = su.process_stats(stats)
-        print('Average precision: {0[0]}, Average recall: {0[1]}, Average iou: {0[2]}, '
-              'Average confidence of TP: {0[3]}, '
-              'Average confidence of FP: {0[4]}, Total num of TP: {0[5]}, Total num of FP: {0[6]}, '
+        print(prefix)
+        print('Average precision: {0[0]:.3f}, Average recall: {0[1]:.3f}, Average iou: {0[2]:.3f}, '
+              'Average confidence of TP: {0[3]:.3f}, '
+              'Average confidence of FP: {0[4]:.3f}, Total num of TP: {0[5]}, Total num of FP: {0[6]}, '
               'Total num of FN: {0[7]}'.format(final_stats))
         return final_stats

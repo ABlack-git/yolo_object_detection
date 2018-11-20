@@ -1,29 +1,25 @@
 import numpy as np
 
 
-def prediction_to_boxes(labels, grid_size, img_size, o_img_size):
-    # print(labels[0, :, 0])
-    w_ratio = o_img_size[0] / img_size[0]
-    h_ratio = o_img_size[1] / img_size[1]
-    g_i = np.zeros([grid_size[0] * grid_size[1]])
-    g_j = np.zeros([grid_size[0] * grid_size[1]])
+def predictions_to_boxes(in_labels, img_size, grid_size, sqrt, last_dim_size=6):
+    labels = np.copy(in_labels)
+    labels = np.reshape(labels, [len(labels), grid_size[0] * grid_size[1], last_dim_size])
     counter_i = 0
     counter_j = 0
     for i in range(grid_size[0] * grid_size[1]):
-        g_i[i] = counter_i
-        g_j[i] = counter_j
+        labels[:, i, 0] = np.round((labels[:, i, 0] + counter_i) * img_size[0] / grid_size[0])
+        labels[:, i, 1] = np.round((labels[:, i, 1] + counter_j) * img_size[1] / grid_size[1])
+        if sqrt:
+            labels[:, i, 2] = np.round(np.power(labels[:, i, 2], 2) * img_size[0])
+            labels[:, i, 3] = np.round(np.power(labels[:, i, 3], 2) * img_size[1])
+        else:
+            labels[:, i, 2] = np.round(labels[:, i, 2] * img_size[0])
+            labels[:, i, 3] = np.round(labels[:, i, 3] * img_size[1])
         counter_i += 1
         if (i + 1) % grid_size[0] == 0:
             counter_i = 0
             counter_j += 1
-    # print(Gi)
-    print(img_size[0] / grid_size[0])
-    labels[:, :, 0] = (labels[:, :, 0] + g_i) * img_size[0] / grid_size[0] * w_ratio
-    labels[:, :, 1] = (labels[:, :, 1] + g_j) * img_size[1] / grid_size[1] * h_ratio
-    labels[:, :, 2] = np.power(labels[:, :, 2] * img_size[0], 2) * w_ratio
-    labels[:, :, 3] = np.power(labels[:, :, 3] * img_size[1], 2) * h_ratio
-    for row in labels[0, :, :]:
-        print(row)
+    return labels
 
 
 def convert_topleft_to_centre(bboxes):

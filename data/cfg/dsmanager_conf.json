@@ -1,13 +1,14 @@
 {
-  "mode": "sample",
+  "mode": "validate",
   "data_type": "images",
   "path_type": "folders",
-  "labels_type": "txt_vdrone",
-  "save_location": "/Volumes/TRANSCEND/Data Sets/VD_sampled/Validation set",
+  "labels_type": "my_ds",
+  "save_location": "/Volumes/TRANSCEND/Data Sets/VD_sampled/Training set/Removed",
+  "checkpoint_path": "/Users/mac/Documents/Study/IND/yolo_object_detection/data/checkpoint.chkpt",
   "data_path": [
-    "/Volumes/TRANSCEND/Data Sets/VisDrone/VisDrone2018-DET-val/images"
+    "/Volumes/TRANSCEND/Data Sets/VD_sampled/Training set/Images"
   ],
   "labels_path": [
-    "/Volumes/TRANSCEND/Data Sets/VisDrone/VisDrone2018-DET-val/annotations"
+    "/Volumes/TRANSCEND/Data Sets/VD_sampled/Training set/Annotations"
   ]
 }

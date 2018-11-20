@@ -2,9 +2,12 @@ import os
 import json
 import data_utils as du
 import numpy as np
-import shutil
 import stats_utils as su
+import bbox_utils as bbu
+import image_utils as imu
 from data.label_creator import LabelCreator
+import cv2
+import shutil
 
 
 class DSManager:
@@ -20,6 +23,7 @@ class DSManager:
         self.labels_path = []
         self.mode = ''
         self.save_location = ''
+        self.checkpoint_path = None
         self.__read_cfg(cfg)
 
     def __read_cfg(self, cfg_path):
@@ -36,6 +40,9 @@ class DSManager:
             raise ValueError('"labels_type" should be one of: {}'.format(self.LABELS_TYPE))
         self.__get_data(cfg['data_path'], cfg['labels_path'])
         self.save_location = cfg['save_location']
+        if 'checkpoint_path' in cfg:
+            self.checkpoint_path = cfg['checkpoint_path']
+
         if not os.path.exists(self.save_location):
             os.makedirs(self.save_location)
 
@@ -75,7 +82,62 @@ class DSManager:
         raise NotImplementedError('Sampling from video not yet implemented.')
 
     def __validate_images(self):
-        pass
+        if self.labels_type == 'my_ds':
+            img_path_dst = os.path.join(self.save_location, 'Images')
+            label_path_dst = os.path.join(self.save_location, 'Annotations')
+            if not os.path.exists(img_path_dst):
+                os.makedirs(img_path_dst)
+            if not os.path.exists(label_path_dst):
+                os.makedirs(label_path_dst)
+            imgs_to_remove = set()
+            labels_to_remove = set()
+            lc = LabelCreator(self.labels_type)
+            if self.checkpoint_path is not None and os.path.exists(self.checkpoint_path):
+                with open(self.checkpoint_path, 'r') as f:
+                    i = int(f.readline())
+            else:
+                i = 0
+            while True:
+                if len(self.data_path) == i:
+                    i = 0
+                img = cv2.imread(self.data_path[i], cv2.IMREAD_COLOR)
+                bboxes = lc.get_boxes_for_image(self.labels_path[i])
+                if len(bboxes) > 0:
+                    bboxes = bbu.convert_center_to_2points(bboxes)
+                    imu.draw_bbox(bboxes, img)
+                img = imu.resize_img(img, 700, 700)
+                img = imu.pad_img(img, 700, 700)
+                cv2.imshow('VALIDATION', img)
+                k = cv2.waitKey(0)
+                if k == 27:
+                    break
+                elif k == ord(' '):
+                    i += 1
+                elif k == ord(','):
+                    i -= 1
+                    if i < 0:
+                        i = 0
+                elif k == ord('d'):
+                    if self.data_path[i] in imgs_to_remove:
+                        imgs_to_remove.remove(self.data_path[i])
+                        labels_to_remove.remove(self.labels_path[i])
+                        print('Items {} and {} were removed from set'.format(os.path.basename(self.data_path[i]),
+                                                                             os.path.basename(self.labels_path[i])))
+                    else:
+                        imgs_to_remove.add(self.data_path[i])
+                        labels_to_remove.add(self.labels_path[i])
+                        print('Items {} and {} were added to set'.format(os.path.basename(self.data_path[i]),
+                                                                         os.path.basename(self.labels_path[i])))
+                    i += 1
+            if imgs_to_remove != set() and labels_to_remove != set():
+                for img_src, label_src in zip(imgs_to_remove, labels_to_remove):
+                    shutil.move(img_src, img_path_dst)
+                    shutil.move(label_src, label_path_dst)
+
+            if self.checkpoint_path is not None:
+                with open(self.checkpoint_path, 'w') as f:
+                    i -= len(imgs_to_remove)
+                    f.write(str(i))
 
     def __get_data(self, data, labels):
         if self.path_type == 'single_file':
@@ -94,8 +156,8 @@ class DSManager:
                 if not os.path.isdir(data_dir) or not os.path.isdir(labels_dir):
                     raise ValueError('If path_type was specified as folders you should provide all paths in data_path '
                                      'and in labels_path as paths to directories')
-                self.data_path += du.list_dir(data_dir, self.DATA_EXTENSIONS)
-                self.labels_path += du.list_dir(labels_dir, self.LABELS_EXTENSIONS)
+                self.data_path += du.list_dirs(data_dir, self.DATA_EXTENSIONS)
+                self.labels_path += du.list_dirs(labels_dir, self.LABELS_EXTENSIONS)
         elif self.path_type == 'multiple_files':
             raise NotImplementedError('Multiple files are not yet supported')
         else:

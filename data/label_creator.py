@@ -39,6 +39,9 @@ class LabelCreator:
         if self.l_type == 'txt_vdrone':
             data = self.read_txt(labels_path)
             bboxes = self.get_visdrone_bbox(data)
+        elif self.l_type == 'my_ds':
+            data = self.read_txt(labels_path)
+            bboxes = self.get_my_ds_bboxes(data)
         return bboxes
 
     def read_xml(self, labels_path):
@@ -70,14 +73,14 @@ class LabelCreator:
                         data.append(splited)
                     if self.l_type == 'txt_vdrone':
                         splited = item.split(sep=',')
-                        try:
-                            splited = [int(x) for x in splited if x != '']
-                        except ValueError as e:
-                            print(splited)
-                            print(labels_path)
-                            print(e)
-                            exit()
-
+                        splited = [int(x) for x in splited if x != '']
+                        data.append(splited)
+                    if self.l_type == 'my_ds':
+                        splited = item.split(sep=' ')
+                        if splited[0] == 'None':
+                            splited = []
+                        else:
+                            splited = [int(x) for i, x in enumerate(splited) if i < 4]
                         data.append(splited)
             self.data_dict.update({labels_path: data})
 
@@ -185,3 +188,6 @@ class LabelCreator:
         if len(bboxes) > 0:
             bboxes = bbu.convert_topleft_to_centre(bboxes)
         return bboxes
+
+    def get_my_ds_bboxes(self, data):
+        return data

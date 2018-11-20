@@ -1,3 +1,5 @@
+# !!!subset_length is an optional field!!! #
+
 {
   "images": [
     "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Images/MiniDrone",
@@ -23,6 +25,7 @@
     "no_boxes": 1,
     "shuffle": true,
     "sqrt": true,
-    "subset_length": 100
+    "subset_length": 100,
+    "keep_asp_ration": true
   }
 }

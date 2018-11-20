@@ -242,8 +242,8 @@ def main():
     # plot_bxs_per_img(test_labels)
     # plot_distances(test_labels, test_imgs)
     # # stats of val set
-    val_labels = du.list_dir(valid_set['labels'], '.txt')
-    val_imgs = du.list_dir(valid_set['images'], '.jpg')
+    val_labels = du.list_dirs(valid_set['labels'], '.txt')
+    val_imgs = du.list_dirs(valid_set['images'], '.jpg')
     val_imgs, val_labels = du.match_imgs_with_labels(val_imgs, val_labels)
     plot_dimensions(val_labels, val_imgs)
     plot_bxs_per_img(val_labels)

@@ -290,16 +290,17 @@ class YoloV0(ANN):
                                                                       padding, name, write_summary)
                 last_out = self.layers_list[name]
 
+            elif section.startswith('DROPOUT'):
+                name = section
+                rate = parser.getfloat(section, 'rate')
+                self.layers_list[name] = super().create_dropout(last_out, rate, name)
+                last_out = self.layers_list[name]
+
             elif section.startswith('FC'):
                 name = section
                 w_shape = [int(val) for val in parser.get(section, 'w_shape').split(',')]
                 batch_norm = parser.getboolean(section, 'batch_norm')
                 weight_init = parser.get(section, 'weight_init')
-                dropout = parser.getboolean(section, 'dropout')
-                if parser.has_option(section, 'dropout_param'):
-                    dropout_param = parser.getfloat(section, 'dropout_param')
-                else:
-                    dropout_param = None
                 if parser.has_option(section, 'trainable'):
                     trainable = parser.getboolean(section, 'trainable')
                 else:
@@ -307,8 +308,7 @@ class YoloV0(ANN):
                 if parser.has_option(section, 'reshape'):
                     reshape = parser.getint(section, 'reshape')
                     last_out = tf.reshape(last_out, [-1, reshape])
-                self.layers_list[name] = super().create_fc_layer(last_out, w_shape, name, dropout=dropout,
-                                                                 dropout_param=dropout_param, weight_init=weight_init,
+                self.layers_list[name] = super().create_fc_layer(last_out, w_shape, name, weight_init=weight_init,
                                                                  batch_norm=batch_norm, trainable=trainable)
                 last_out = self.layers_list[name]
             else:

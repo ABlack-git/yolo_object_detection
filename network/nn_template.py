@@ -129,7 +129,7 @@ class ANN:
         with tf.name_scope(name):
             out = tf.layers.dropout(x, rate, self.ph_train, name='Dropout')
         tf.logging.info('Layer %s created with parameters: ' % name)
-        tf.logging.info('   rate={.2f}'.format(rate))
+        tf.logging.info('   rate={:.2f}'.format(rate))
         return out
 
     def learning_rate(self, lr, g_step, hp, lr_type, offset=0):

@@ -1,0 +1,52 @@
+{
+  "test_set": {
+    "images": [
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Images/MiniDrone",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Images/Okutama",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Images/UFC",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Images/VIRAT",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Images/VisDrone"
+    ],
+    "labels": [
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Annotations/MiniDrone",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Annotations/Okutama",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Annotations/UFC",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Annotations/VIRAT",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Annotations/VisDrone"
+    ]
+  },
+  "train_set": {
+    "images": [
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Images/MiniDrone",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Images/Okutama",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Images/UFC",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Images/VIRAT",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Images/VisDrone"
+    ],
+    "labels": [
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Annotations/MiniDrone",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Annotations/Okutama",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Annotations/UFC",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Annotations/VIRAT",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Annotations/VisDrone"
+    ]
+  },
+  "validation_set": {
+    "images": [
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Images/MiniDrone",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Images/Okutama",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Images/UFC",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Images/VIRAT",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Images/VisDrone"
+    ],
+    "labels": [
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Annotations/MiniDrone",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Annotations/Okutama",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Annotations/UFC",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Annotations/VIRAT",
+      "/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Annotations/VisDrone"
+    ]
+  },
+  "new_w": 720,
+  "new_h": 405
+}

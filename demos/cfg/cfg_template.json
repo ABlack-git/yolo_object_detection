@@ -1,4 +1,6 @@
 {
+  "net_cfg": "E:\\Andrew\\project\\yolo_object_detection\\cfg\\model_8l_v2_1.cfg",
+  "weights": "E:\\Andrew\\Ann_models\\weights\\model_8l_v2_1\\model_8l_v2_1-29755",
   "images": [
     "E:\\Andrew\\DS\\Testing set\\Images\\MiniDrone",
     "E:\\Andrew\\DS\\Testing set\\Images\\Okutama",
@@ -11,7 +13,6 @@
     "E:\\Andrew\\DS\\Testing set\\Annotations\\UFC",
     "E:\\Andrew\\DS\\Testing set\\Annotations\\VIRAT"
   ],
-  "weights": "E:\\Andrew\\Ann_models\\weights\\model_8l_v2_1\\model_8l_v2_1-29755",
   "configuration": {
     "draw_grid": true,
     "draw_centers": false,
@@ -19,7 +20,11 @@
     "delay": 20,
     "iou_threshold": 0.3,
     "modes": {
-       "stats": {"enable": true, "save": false, "path": "E:\\Andrew\\Stats"},
+      "stats": {
+        "enable": true,
+        "save": false,
+        "path": "E:\\Andrew\\Stats"
+      },
       "images": true,
       "video": false
     }

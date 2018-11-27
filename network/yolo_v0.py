@@ -306,7 +306,7 @@ class YoloV0(ANN):
                     trainable = True
                 if parser.has_option(section, 'reshape'):
                     reshape = parser.getint(section, 'reshape')
-                    last_out = tf.reshape(last_out, [self.batch_size, reshape])
+                    last_out = tf.reshape(last_out, [-1, reshape])
                 self.layers_list[name] = super().create_fc_layer(last_out, w_shape, name, dropout=dropout,
                                                                  dropout_param=dropout_param, weight_init=weight_init,
                                                                  batch_norm=batch_norm, trainable=trainable)

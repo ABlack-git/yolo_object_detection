@@ -54,7 +54,10 @@ def show_images_with_boxes(net, testing_set, draw_centre=True, draw_grid=False, 
             img = cv2.imread(os.path.join(testing_set, img_path))
         t_read = time.time() - t0_read
         t0_resize = time.time()
-        img = image_utils.resize_img(img, net.img_size[1], net.img_size[0])
+        img = image_utils.resize_img(img, net.img_size[1], net.img_size[0], keep_asp_ratio=net.keep_asp_ratio)
+
+        # if net.keep_asp_ratio: pad
+
         t_resize = time.time() - t0_resize
         t0_pred = time.time()
         preds = net.get_predictions([img])

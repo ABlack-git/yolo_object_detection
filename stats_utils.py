@@ -144,3 +144,21 @@ def compute_aspectratio(width: int, height: int):
     x = int(width / r)
     y = int(height / r)
     return x, y
+
+
+def compute_new_size(height, width, h_new, w_new, keep_asp_ratio=True):
+    as_nom, as_denom = compute_aspectratio(width, height)  # 16:9,4:3,3:2, etc..
+    as_nom_new, as_denom_new = compute_aspectratio(w_new, h_new)
+    if keep_asp_ratio:
+        if (as_nom == as_nom_new) and (as_denom == as_denom_new):
+            pass
+        else:
+            tmp_h = int(w_new * (as_denom / as_nom))
+            if tmp_h > h_new:
+                w_new = int(h_new * (as_nom / as_denom))
+            else:
+                h_new = tmp_h
+
+    if height > h_new or width > w_new:
+        return h_new, w_new
+    return height, width

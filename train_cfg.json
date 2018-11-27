@@ -1,18 +1,20 @@
 {
-  "net_cfg": "E:\\Andrew\\project\\yolo_object_detection\\cfg\\model_6l_v1_3.cfg",
-  "weights": null,
+  "net_cfg": "E:\\Andrew\\project\\yolo_object_detection\\cfg\\model_8l_v2_1.cfg",
+  "weights": "E:\\Andrew\\Ann_models\\weights\\model_8l_v2_1\\model_8l_v2_1-13525",
   "training_set": {
     "images": [
       "E:\\Andrew\\DS\\Training Set\\Images\\MiniDrone",
       "E:\\Andrew\\DS\\Training Set\\Images\\Okutama",
       "E:\\Andrew\\DS\\Training set\\Images\\UFC",
-      "E:\\Andrew\\DS\\Training set\\Images\\VIRAT"
+      "E:\\Andrew\\DS\\Training set\\Images\\VIRAT",
+      "E:\\Andrew\\DS\\Training set\\Images\\VisDrone"
     ],
     "labels": [
       "E:\\Andrew\\DS\\Training Set\\Annotations\\MiniDrone",
       "E:\\Andrew\\DS\\Training Set\\Annotations\\Okutama",
       "E:\\Andrew\\DS\\Training set\\Annotations\\UFC",
-      "E:\\Andrew\\DS\\Training set\\Annotations\\VIRAT"
+      "E:\\Andrew\\DS\\Training set\\Annotations\\VIRAT",
+      "E:\\Andrew\\DS\\Training set\\Annotations\\VisDrone"
     ]
   },
   "validation_set": {
@@ -20,18 +22,20 @@
       "E:\\Andrew\\DS\\Validation Set\\Images\\MiniDrone",
       "E:\\Andrew\\DS\\Validation Set\\Images\\Okutama",
       "E:\\Andrew\\DS\\Validation set\\Images\\UFC",
-      "E:\\Andrew\\DS\\Validation set\\Images\\VIRAT"
+      "E:\\Andrew\\DS\\Validation set\\Images\\VIRAT",
+      "E:\\Andrew\\DS\\Validation Set\\Images\\VisDrone"
     ],
     "labels": [
      "E:\\Andrew\\DS\\Validation Set\\Annotations\\MiniDrone",
       "E:\\Andrew\\DS\\Validation Set\\Annotations\\Okutama",
       "E:\\Andrew\\DS\\Validation set\\Annotations\\UFC",
-      "E:\\Andrew\\DS\\Validation set\\Annotations\\VIRAT"
+      "E:\\Andrew\\DS\\Validation set\\Annotations\\VIRAT",
+      "E:\\Andrew\\DS\\Validation Set\\Annotations\\VisDrone"
     ]
   },
   "parameters": {
-    "num_epochs": 5,
-    "do_test": false,
+    "num_epochs": 30,
+    "do_test": true,
     "summary_step": 100,
     "summary_path": "E:\\Andrew\\Ann_models\\summaries",
     "save_path": "E:\\Andrew\\Ann_models\\weights",

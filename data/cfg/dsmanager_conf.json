@@ -3,12 +3,14 @@
   "data_type": "images",
   "path_type": "folders",
   "labels_type": "my_ds",
-  "save_location": "/Volumes/TRANSCEND/Data Sets/VD_sampled/Training set/Removed",
-  "checkpoint_path": "/Users/mac/Documents/Study/IND/yolo_object_detection/data/checkpoint.chkpt",
+  "frame_w": 1440,
+  "frame_h": 810,
+  "save_location": "/Volumes/TRANSCEND/Data Sets/VD_sampled/Testing set",
+  "checkpoint_path": null,
   "data_path": [
-    "/Volumes/TRANSCEND/Data Sets/VD_sampled/Training set/Images"
+    "/Volumes/TRANSCEND/Data Sets/VD_sampled/Validation set/Images"
   ],
   "labels_path": [
-    "/Volumes/TRANSCEND/Data Sets/VD_sampled/Training set/Annotations"
+    "/Volumes/TRANSCEND/Data Sets/VD_sampled/Validation set/Annotations"
   ]
 }

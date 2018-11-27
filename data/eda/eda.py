@@ -1,10 +1,10 @@
 import data_utils as du
 import bbox_utils as bbu
 import stats_utils as su
-import os
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
+import json
 
 
 def boxes_per_image(labels):
@@ -32,8 +32,7 @@ def boxes_per_image(labels):
     return bb_per_img
 
 
-def distance(imgs, labels):
-    resize_to = (480, 720)
+def distance(imgs, labels, new_h, new_w):
     x_dist = []
     y_dist = []
     t_dist = []
@@ -44,7 +43,8 @@ def distance(imgs, labels):
         if bboxes.shape[0] < 2:
             continue
         w, h = Image.open(img).size
-        bboxes = bbu.resize_boxes(bboxes, (h, w), resize_to)
+        h_new, w_new = su.compute_new_size(h, w, new_h, new_w)
+        bboxes = bbu.resize_boxes(bboxes, (h, w), (h_new, w_new))
         distances = compute_distances(bboxes)
         for item in distances:
             x_dist.append(item[0])
@@ -67,8 +67,7 @@ def compute_distances(bboxes):
     return distances
 
 
-def boxes_dimensions(labels, imgs):
-    resize_to = (480, 720)
+def boxes_dimensions(labels, imgs, new_h, new_w):
     boxes_w = []
     boxes_h = []
     for img, label in zip(imgs, labels):
@@ -78,15 +77,16 @@ def boxes_dimensions(labels, imgs):
         if bboxes.shape[0] < 2:
             continue
         w, h = Image.open(img).size
-        bboxes = bbu.resize_boxes(bboxes, (h, w), resize_to)
+        h_new, w_new = su.compute_new_size(h, w, new_h, new_w)
+        bboxes = bbu.resize_boxes(bboxes, (h, w), (h_new, w_new))
         for item in bboxes:
             boxes_w.append(item[2])
             boxes_h.append(item[3])
     return boxes_w, boxes_h
 
 
-def plot_dimensions(labels_path, img_path):
-    boxes_w, boxes_h = boxes_dimensions(labels_path, img_path)
+def plot_dimensions(labels_path, img_path, new_h, new_w):
+    boxes_w, boxes_h = boxes_dimensions(labels_path, img_path, new_h, new_w)
 
     hist, xedges, yedges = np.histogram2d(boxes_w, boxes_h, bins=50, normed=False)
     hist = hist.T
@@ -144,9 +144,9 @@ def plot_bxs_per_img(labels_path):
     ax_1.xaxis.set_ticks(np.arange(0, ax_1.get_xlim()[1], 1))
 
 
-def plot_distances(labels_path, img_path):
+def plot_distances(labels_path, img_path, new_h, new_w):
     # statistics on distances between centres
-    x, y, t = distance(img_path, labels_path)
+    x, y, t = distance(img_path, labels_path, new_h, new_w)
     hist, xedges, yedges = np.histogram2d(x, y, bins=(140, 90), normed=False)
     hist = hist.T
     hist = hist / len(x)
@@ -203,52 +203,19 @@ def plot_distances(labels_path, img_path):
 
 
 def main():
-    test_set = {"images": ['/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Images/MiniDrone',
-                           '/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Images/Okutama',
-                           '/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Images/UFC',
-                           '/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Images/VIRAT'],
-                'labels': ['/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Annotations/MiniDrone',
-                           '/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Annotations/Okutama',
-                           '/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Annotations/UFC',
-                           '/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Annotations/VIRAT']}
-    train_set = {"images": ['/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Images/MiniDrone',
-                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Images/Okutama',
-                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Images/UFC',
-                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Images/VIRAT'],
-                 'labels': ['/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Annotations/MiniDrone',
-                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Annotations/Okutama',
-                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Annotations/UFC',
-                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Training Set/Annotations/VIRAT']}
-    valid_set = {"images": ['/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Images/MiniDrone',
-                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Images/Okutama',
-                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Images/UFC',
-                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Images/VIRAT'],
-                 'labels': ['/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Annotations/MiniDrone',
-                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Annotations/Okutama',
-                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Annotations/UFC',
-                            '/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Annotations/VIRAT']}
-    # stats of train set
-    # train_labels = du.list_dir(train_set['labels'], '.txt')
-    # train_imgs = du.list_dir(train_set['images'], '.jpg')
-    # train_imgs, train_labels = du.match_imgs_with_labels(train_imgs, train_labels)
-    # plot_dimensions(train_labels, train_imgs)
-    # plot_bxs_per_img(train_labels)
-    # plot_distances(train_labels, train_imgs)
-    # # stats of test set
-    # test_labels = du.list_dir(test_set['labels'], '.txt')
-    # test_imgs = du.list_dir(test_set['images'], '.jpg')
-    # test_imgs, test_labels = du.match_imgs_with_labels(test_imgs, test_labels)
-    # plot_dimensions(test_labels, test_imgs)
-    # plot_bxs_per_img(test_labels)
-    # plot_distances(test_labels, test_imgs)
-    # # stats of val set
-    val_labels = du.list_dirs(valid_set['labels'], '.txt')
-    val_imgs = du.list_dirs(valid_set['images'], '.jpg')
-    val_imgs, val_labels = du.match_imgs_with_labels(val_imgs, val_labels)
-    plot_dimensions(val_labels, val_imgs)
-    plot_bxs_per_img(val_labels)
-    plot_distances(val_labels, val_imgs)
-
+    cfg_path = 'eda_cfg.json'
+    with open(cfg_path, 'r') as f:
+        cfg = json.load(f)
+    sets = (cfg['test_set'], cfg['validation_set'], cfg['train_set'])
+    new_h = cfg['new_h']
+    new_w = cfg['new_w']
+    for dataset in sets:
+        labels = du.list_dirs(dataset['labels'], '.txt')
+        imgs = du.list_dirs(dataset['images'], '.jpg')
+        imgs, labels = du.match_imgs_with_labels(imgs, labels)
+        plot_bxs_per_img(labels)
+        plot_dimensions(labels, imgs, new_h, new_w)
+        plot_distances(labels, imgs, new_h, new_w)
     plt.show()
 
 

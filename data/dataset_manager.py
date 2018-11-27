@@ -8,6 +8,7 @@ import image_utils as imu
 from data.label_creator import LabelCreator
 import cv2
 import shutil
+import random
 
 
 class DSManager:
@@ -23,6 +24,8 @@ class DSManager:
         self.labels_path = []
         self.mode = ''
         self.save_location = ''
+        self.frame_w = -1
+        self.frame_h = -1
         self.checkpoint_path = None
         self.__read_cfg(cfg)
 
@@ -31,7 +34,8 @@ class DSManager:
             raise ValueError
         with open(cfg_path, 'r') as f:
             cfg = json.load(f)
-
+        self.frame_w = cfg['frame_w']
+        self.frame_h = cfg['frame_h']
         self.data_type = cfg['data_type']
         self.mode = cfg['mode']
         self.path_type = cfg['path_type']
@@ -51,6 +55,8 @@ class DSManager:
             self.__sample()
         elif self.mode == 'validate':
             self.__validate_images()
+        elif self.mode == 'create_subset':
+            pass
         else:
             raise ValueError('Cant recognize mode: {}. Mode should be sample or validate'.format(self.mode))
 
@@ -104,9 +110,9 @@ class DSManager:
                 bboxes = lc.get_boxes_for_image(self.labels_path[i])
                 if len(bboxes) > 0:
                     bboxes = bbu.convert_center_to_2points(bboxes)
-                    imu.draw_bbox(bboxes, img)
-                img = imu.resize_img(img, 700, 700)
-                img = imu.pad_img(img, 700, 700)
+                    imu.draw_bbox(bboxes, img, color=(0, 0, 255))
+                img = imu.resize_img(img, self.frame_h, self.frame_w)
+                img = imu.pad_img(img, self.frame_h, self.frame_w)
                 cv2.imshow('VALIDATION', img)
                 k = cv2.waitKey(0)
                 if k == 27:
@@ -202,8 +208,22 @@ class DSManager:
         txt_file = os.path.join(self.save_location, 'Annotations', txt_base_name)
         np.savetxt(txt_file, bboxes, fmt='%d')
 
+    def create_subset(self, subset_size):
+        ds = zip(self.data_path, self.labels_path)
+        new_subset = random.sample(list(ds), subset_size)
+        img_dir = os.path.join(self.save_location, 'Images')
+        labels_dir = os.path.join(self.save_location, 'Annotations')
+        if not os.path.exists(img_dir):
+            os.makedirs(img_dir)
+        if not os.path.exists(labels_dir):
+            os.makedirs(labels_dir)
+        for data, label in new_subset:
+            shutil.move(data, img_dir)
+            shutil.move(label, labels_dir)
+
 
 if __name__ == '__main__':
     cfg = '/Users/mac/Documents/Study/IND/yolo_object_detection/data/cfg/dsmanager_conf.json'
     dsm = DSManager(cfg)
-    dsm.manage_dataset()
+    # dsm.manage_dataset()
+    dsm.create_subset(250)

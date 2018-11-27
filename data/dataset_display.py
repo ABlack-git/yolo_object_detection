@@ -23,6 +23,8 @@ class DatasetDisplay:
         self.l_type = ''
         self.no_labels = []
         self.no_vids = []
+        self.frame_w = -1
+        self.frame_h = -1
         self.read_cfg(cfg)
         self.__data_to_labels()
         # if self.data_type == 'videos':
@@ -35,6 +37,8 @@ class DatasetDisplay:
             raise ValueError
         with open(cfg_path, 'r') as f:
             cfg = json.load(f)
+        self.frame_w = cfg['frame_w']
+        self.frame_h = cfg['frame_h']
         if cfg['data_type'] != 'videos' and cfg['data_type'] != 'images':
             raise ValueError('"data_type" in config file should be either "videos" or "images".')
         self.data_type = cfg['data_type']
@@ -175,10 +179,10 @@ class DatasetDisplay:
                     bboxes = bbu.convert_center_to_2points(bboxes)
                     imgu.draw_bbox(bboxes, frame, color=(0, 0, 255), thickness=5)
                 old_size = frame.shape[:2]
-                frame = imgu.resize_img(frame, 720, 960)
+                frame = imgu.resize_img(frame, self.frame_h, self.frame_w)
                 if len(bboxes) > 0:
                     # bboxes = bbu.convert_center_to_2points(bboxes)
-                    bboxes = bbu.resize_boxes(bboxes, old_size, (720, 960))
+                    bboxes = bbu.resize_boxes(bboxes, old_size, (self.frame_h, self.frame_w))
                     imgu.draw_bbox(bboxes, frame, thickness=1)
                 cv2.imshow(v_name, frame)
 
@@ -195,12 +199,14 @@ class DatasetDisplay:
             img = cv2.imread(data, cv2.IMREAD_COLOR)
             old_size = img.shape[:2]
             bboxes = lc.get_boxes_for_image(label)
-            img = imgu.resize_img(img, 500, 500)
+            img = imgu.resize_img(img, self.frame_h, self.frame_w)
             if len(bboxes) > 0:
                 bboxes = bbu.convert_center_to_2points(bboxes)
                 bboxes = bbu.resize_boxes(bboxes, old_size, img.shape[:2])
                 imgu.draw_bbox(bboxes, img, color=[0, 0, 255], thickness=1)
-            img = imgu.pad_img(img, 500, 500)
+            else:
+                continue
+            img = imgu.pad_img(img, self.frame_h, self.frame_w)
             # else:
             #     continue
             cv2.imshow('Image', img)

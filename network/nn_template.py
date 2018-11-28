@@ -133,9 +133,12 @@ class ANN:
         return out
 
     def learning_rate(self, lr, g_step, hp, lr_type, offset=0):
+        lr_type = lr_type.replace(" ", "")
         if lr_type == 'const':
             return lr
         if lr_type == 'exp_rise':
             return lr * math.exp(hp * (g_step - offset))
         if lr_type == 'exp_decay':
             return lr * math.exp(-hp * (g_step - offset))
+        else:
+            raise ValueError('Unknown learning rate type')

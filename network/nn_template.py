@@ -126,7 +126,7 @@ class ANN:
             return pooling
 
     def create_dropout(self, x, rate, name, mode='regular_dropout'):
-        mode = mode.strip()
+        mode = mode.strip(" '\"")
         with tf.name_scope(name):
             if mode == 'spatial_dropout':
                 shape = tf.shape(x)

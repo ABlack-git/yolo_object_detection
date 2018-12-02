@@ -125,11 +125,21 @@ class ANN:
             tf.logging.info('   padding: %s' % padding)
             return pooling
 
-    def create_dropout(self, x, rate, name):
+    def create_dropout(self, x, rate, name, mode='regular_dropout'):
+        mode = mode.strip()
         with tf.name_scope(name):
-            out = tf.layers.dropout(x, rate, self.ph_train, name='Dropout')
+            if mode == 'spatial_dropout':
+                shape = tf.shape(x)
+                out = tf.layers.dropout(x, rate, noise_shape=[shape[0], 1, 1, shape[3]], training=self.ph_train,
+                                        name='Spatial_dropout')
+            elif mode == 'regular_dropout':
+                out = tf.layers.dropout(x, rate, training=self.ph_train, name='Dropout')
+            else:
+                out = None
+                raise ValueError('Unknown mode.')
         tf.logging.info('Layer %s created with parameters: ' % name)
-        tf.logging.info('   rate={:.2f}'.format(rate))
+        tf.logging.info('   mode = {}'.format(mode))
+        tf.logging.info('   rate = {:.2f}'.format(rate))
         return out
 
     def learning_rate(self, lr, g_step, hp, lr_type, offset=0):

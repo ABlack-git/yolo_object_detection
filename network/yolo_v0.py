@@ -293,7 +293,13 @@ class YoloV0(ANN):
             elif section.startswith('DROPOUT'):
                 name = section
                 rate = parser.getfloat(section, 'rate')
-                self.layers_list[name] = super().create_dropout(last_out, rate, name)
+                mode = None
+                if parser.has_option(section, 'mode'):
+                    mode = parser.get(section, 'mode')
+                if mode is not None:
+                    self.layers_list[name] = super().create_dropout(last_out, rate, name, mode)
+                else:
+                    self.layers_list[name] = super().create_dropout(last_out, rate, name)
                 last_out = self.layers_list[name]
 
             elif section.startswith('FC'):

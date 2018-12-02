@@ -451,18 +451,20 @@ class YoloV0(ANN):
             self.save(save_path, self.model_version)
             if do_test and (valid_set is not None):
                 val_stats = self.__validate_model(valid_set, 0.5, prefix='Validation model on validation set')
-                self.log_scalar('validation_avg_prec', val_stats[0], summary_writer, 'Statistics')
-                self.log_scalar('validation_avg_recall', val_stats[1], summary_writer, 'Statistics')
-                self.log_scalar('validation_avg_iou', val_stats[2], summary_writer, 'Statistics')
-                self.log_scalar('validation_avg_conf_tp', val_stats[3], summary_writer, 'Statistics')
-                self.log_scalar('validation_avg_conf_fp', val_stats[4], summary_writer, 'Statistics')
+                self.log_scalar('Statistics', 'validation_avg_prec', val_stats[0], summary_writer, )
+                self.log_scalar('Statistics', 'validation_avg_recall', val_stats[1], summary_writer)
+                self.log_scalar('Statistics', 'validation_avg_iou', val_stats[2], summary_writer)
+                self.log_scalar('Statistics', 'validation_avg_conf_tp', val_stats[3], summary_writer)
+                self.log_scalar('Statistics', 'validation_avg_conf_fp', val_stats[4], summary_writer)
+                self.log_scalar('Statistics', 'validation_num_of_tp', val_stats[5], summary_writer)
             if do_test:
                 val_stats = self.__validate_model(train_test_set, 0.5, prefix='Validation model on subset of train set')
-                self.log_scalar('train_avg_prec', val_stats[0], summary_writer, 'Statistics')
-                self.log_scalar('train_avg_recall', val_stats[1], summary_writer, 'Statistics')
-                self.log_scalar('train_avg_iou', val_stats[2], summary_writer, 'Statistics')
-                self.log_scalar('train_avg_conf_tp', val_stats[3], summary_writer, 'Statistics')
-                self.log_scalar('train_avg_conf_fp', val_stats[4], summary_writer, 'Statistics')
+                self.log_scalar('Statistics', 'train_avg_prec', val_stats[0], summary_writer)
+                self.log_scalar('Statistics', 'train_avg_recall', val_stats[1], summary_writer)
+                self.log_scalar('Statistics', 'train_avg_iou', val_stats[2], summary_writer)
+                self.log_scalar('Statistics', 'train_avg_conf_tp', val_stats[3], summary_writer)
+                self.log_scalar('Statistics', 'train_avg_conf_fp', val_stats[4], summary_writer)
+                self.log_scalar('Statistics', 'train_num_of_tp', val_stats[5], summary_writer)
 
     def tf_iou(self, y_true, y_pred):
         """
@@ -534,9 +536,9 @@ class YoloV0(ANN):
 
                 return tf.truediv(intersection, union, name='IoU')
 
-    def log_scalar(self, tag, value, summary_writer, name):
-        with tf.name_scope(name):
-            summary = tf.Summary(value=[tf.Summary.Value(tag=tag, simple_value=value)])
+    def log_scalar(self, scope_name, value_name, value, summary_writer):
+        tag = scope_name + '/' + value_name
+        summary = tf.Summary(value=[tf.Summary.Value(tag=tag, simple_value=value)])
         summary_writer.add_summary(summary, tf.train.global_step(self.sess, self.global_step))
 
     def get_predictions(self, x):

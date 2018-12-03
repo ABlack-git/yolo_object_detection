@@ -15,7 +15,7 @@ def test_model(net, images, labels, iou_threshold, save_stats, path=''):
     img_size = {"width": net.img_size[0], "height": net.img_size[1]}
     grid_size = {"width": net.grid_size[0], "height": net.grid_size[1]}
     params = {"img_size": img_size, "grid_size": grid_size, "no_boxes": net.no_boxes, "shuffle": True, "sqrt": net.sqrt,
-              'keep_asp_ratio': net.keep_asp_ratio}
+              'keep_asp_ratio': net.keep_asp_ratio, 'normalize_img': net.normalize_img}
     conf = {"images": images, "annotations": labels, "configuration": params}
     conf = json.dumps(conf)
 
@@ -56,7 +56,11 @@ def show_images_with_boxes(net, testing_set, draw_centre=True, draw_grid=False, 
         t0_resize = time.time()
         img = image_utils.resize_img(img, net.img_size[1], net.img_size[0], keep_asp_ratio=net.keep_asp_ratio)
 
-        # if net.keep_asp_ratio: pad
+        if net.keep_asp_ratio:
+            img = image_utils.pad_img(img, net.img_size[1], net.img_size[0])
+
+        if net.normalize_img:
+            img = img / 255.0
 
         t_resize = time.time() - t0_resize
         t0_pred = time.time()

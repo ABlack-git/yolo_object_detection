@@ -1,6 +1,9 @@
 import os
 import numpy as np
 
+DATA_EXTENSIONS = ('.MOV', '.mov', '.MP4', '.mp4', '.mpg', '.jpg')
+LABELS_EXTENSIONS = ('.txt', '.xgtf')
+
 
 def list_dirs(paths, file_ext):
     if isinstance(paths, str):

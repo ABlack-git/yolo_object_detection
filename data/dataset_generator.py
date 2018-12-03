@@ -20,6 +20,7 @@ class DatasetGenerator:
         self.sqrt = False
         self.shuffle = False
         self.keep_asp_ratio = False
+        self.normalize_img = False
         self.subset_length = -1
         self.data_imgs = []
         self.data_labels = []
@@ -51,6 +52,7 @@ class DatasetGenerator:
         self.shuffle = config['shuffle']
         self.sqrt = config['sqrt']
         self.keep_asp_ratio = config['keep_asp_ratio']
+        self.normalize_img = config['normalize_img']
         if "subset_length" in config:
             self.subset_length = config['subset_length']
 
@@ -190,6 +192,8 @@ class DatasetGenerator:
     def __adjust_ground_truths(self, img, boxes, resize_only):
         h_0, w_0 = img.shape[:2]
         img = imu.resize_img(img, self.image_h, self.image_w, self.keep_asp_ratio)
+        if self.normalize_img:
+            img = img / 255
         h_1, w_1 = img.shape[:2]
         if self.keep_asp_ratio:
             img = imu.pad_img(img, self.image_h, self.image_w)

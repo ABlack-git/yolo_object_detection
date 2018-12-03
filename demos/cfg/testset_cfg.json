@@ -5,13 +5,15 @@
     "E:\\Andrew\\DS\\Testing set\\Images\\MiniDrone",
     "E:\\Andrew\\DS\\Testing set\\Images\\Okutama",
     "E:\\Andrew\\DS\\Testing set\\Images\\UFC",
-    "E:\\Andrew\\DS\\Testing set\\Images\\VIRAT"
+    "E:\\Andrew\\DS\\Testing set\\Images\\VIRAT",
+    "E:\\Andrew\\DS\\Testing set\\Images\\VisDrone"
   ],
   "annotations": [
     "E:\\Andrew\\DS\\Testing set\\Annotations\\MiniDrone",
     "E:\\Andrew\\DS\\Testing set\\Annotations\\Okutama",
     "E:\\Andrew\\DS\\Testing set\\Annotations\\UFC",
-    "E:\\Andrew\\DS\\Testing set\\Annotations\\VIRAT"
+    "E:\\Andrew\\DS\\Testing set\\Annotations\\VIRAT",
+    "E:\\Andrew\\DS\\Testing set\\Annotations\\VisDrone"
   ],
   "configuration": {
     "draw_grid": true,

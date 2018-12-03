@@ -1,6 +1,6 @@
 {
-  "net_cfg": "E:\\Andrew\\project\\yolo_object_detection\\cfg\\model_8l_v2_1.cfg",
-  "weights": "E:\\Andrew\\Ann_models\\weights\\model_8l_v2_1\\model_8l_v2_1-13525",
+  "net_cfg": "E:\\Andrew\\project\\yolo_object_detection\\cfg\\8l_v2_4.cfg",
+  "weights": "E:\\Andrew\\Ann_models\\weights\\8l_v2_4\\8l_v2_4-12960",
   "training_set": {
     "images": [
       "E:\\Andrew\\DS\\Training Set\\Images\\MiniDrone",

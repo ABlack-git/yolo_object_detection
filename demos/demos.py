@@ -59,12 +59,13 @@ def show_images_with_boxes(net, testing_set, draw_centre=True, draw_grid=False, 
         if net.keep_asp_ratio:
             img = image_utils.pad_img(img, net.img_size[1], net.img_size[0])
 
+        x = img
         if net.normalize_img:
-            img = img / 255.0
+            x = img / 255.0
 
         t_resize = time.time() - t0_resize
         t0_pred = time.time()
-        preds = net.get_predictions([img])
+        preds = net.get_predictions([x])
         t_preds = time.time() - t0_pred
         t0_draw = time.time()
         if draw_centre and preds:

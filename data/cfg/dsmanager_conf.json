@@ -1,16 +1,19 @@
 {
-  "mode": "validate",
+  "mode": "sample",
   "data_type": "images",
-  "path_type": "folders",
-  "labels_type": "my_ds",
+  "path_types": {
+    "data": "folders",
+    "annotations": "single_file"
+  },
+  "labels_type": "json_coco",
   "frame_w": 1440,
   "frame_h": 810,
-  "save_location": "/Volumes/TRANSCEND/Data Sets/VD_sampled/Testing set",
+  "save_location": "/Volumes/TRANSCEND/Data Sets/COCO_HUMANS/Training Set",
   "checkpoint_path": null,
   "data_path": [
-    "/Volumes/TRANSCEND/Data Sets/VD_sampled/Validation set/Images"
+    "/Users/mac/Downloads/train2014"
   ],
   "labels_path": [
-    "/Volumes/TRANSCEND/Data Sets/VD_sampled/Validation set/Annotations"
+    "/Users/mac/Downloads/annotations/instances_train2014.json"
   ]
 }

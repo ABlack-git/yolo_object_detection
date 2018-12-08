@@ -3,3 +3,5 @@
 network/MNIST/*
 network/MNIST
 network/testing_tf.py
+**/.cache/**
+*gi_*

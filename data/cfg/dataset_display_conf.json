@@ -1,13 +1,17 @@
 {
-  "data_type": "images",
-  "path_type": "folders",
   "labels_type": "my_ds",
-  "frame_w": 720,
-  "frame_h": 405,
+  "data_type": "images",
+  "path_types": {
+    "data": "folders",
+    "annotations": "folders"
+  },
+  "frame_w": 800,
+  "frame_h": 800,
   "data_path": [
-    "/Volumes/TRANSCEND/Data Sets/VD_sampled/Training set/Images"
+    "/Volumes/TRANSCEND/Data Sets/COCO_HUMANS/Training Set/Images"
   ],
   "labels_path": [
-    "/Volumes/TRANSCEND/Data Sets/VD_sampled/Training set/Annotations"
+    "/Volumes/TRANSCEND/Data Sets/COCO_HUMANS/Training Set/Annotations"
   ]
 }
+

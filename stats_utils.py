@@ -9,7 +9,7 @@ def compute_stats(pred_boxes, true_boxes, iou_threshold, stats=None):
 
     :param pred_boxes: list of np.arrays
     :param true_boxes: list of np.arrays
-    :param iou_threshold:
+    :param iou_threshold: determines when to count prediction as tp
     :param stats
     :return:
     """

@@ -1,4 +1,8 @@
 {
+  "mode": "summary",
+  "save_to": "/Users/mac/Documents/Study/IND/data_stats/complete_ds/csvs",
+  "new_w": 720,
+  "new_h": 405,
   "test_set": {
     "images": [
       "/Volumes/TRANSCEND/Data Sets/NewDataSet/Testing Set/Images/MiniDrone",
@@ -46,7 +50,5 @@
       "/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Annotations/VIRAT",
       "/Volumes/TRANSCEND/Data Sets/NewDataSet/Validation Set/Annotations/VisDrone"
     ]
-  },
-  "new_w": 720,
-  "new_h": 405
+  }
 }

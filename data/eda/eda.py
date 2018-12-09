@@ -5,6 +5,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 import json
+import pandas as pd
+import os
+
+
+def summary(cfg):
+    sets = {'Test set': cfg['test_set'], 'Validation set': cfg['validation_set'], 'Training set': cfg['train_set']}
+    for set_name, dataset in sets.items():
+        print('STATS FOR {}'.format(set_name))
+        labels = du.list_dirs(dataset['labels'], '.txt')
+        boxes_per_image(labels)
+        print()
 
 
 def boxes_per_image(labels):
@@ -23,13 +34,21 @@ def boxes_per_image(labels):
     avg = np.average(bb_per_img)
     max_bxs = np.max(bb_per_img)
     total = np.sum(bb_per_img)
-    print('NUMBER OF BOXES PER IMAGE')
+    print('Total number of images: {}'.format(bb_per_img.shape[0]))
     print('Check: %d = %d' % (len(labels), bb_per_img.shape[0]))
     print('Number of images that do not contain objects: %d' % empty_images.shape[0])
     print('Total number of boxes: %d' % total)
     print('Average number of boxes per image: %.2f' % avg)
     print('Max number of boxes per image: %d' % max_bxs)
     return bb_per_img
+
+
+def bb_per_image_to_csv(labels, save_to):
+    bb_per_img = boxes_per_image(labels)
+    # bins = np.bincount(bb_per_img)
+    data_dict = {'num of boxes': bb_per_img}
+    df = pd.DataFrame(data=data_dict)
+    df.to_csv(os.path.join(save_to, 'boxes_per_image.csv'))
 
 
 def distance(imgs, labels, new_h, new_w):
@@ -55,6 +74,13 @@ def distance(imgs, labels, new_h, new_w):
     print('max x: %d, max y: %d, max total: %d' % (np.max(x_dist), np.max(y_dist), np.max(t_dist)))
     print('avg x: %.2f, avg y: %.2f, avg total: %.2f' % (np.average(x_dist), np.average(y_dist), np.average(t_dist)))
     return x_dist, y_dist, t_dist
+
+
+def save_distances_to_csv(imgs, labels, new_h, new_w, save_to):
+    x, y, t = distance(imgs, labels, new_h, new_w)
+    data_dict = {'x dist': x, 'y dist': y, 'total dist': t}
+    df = pd.DataFrame(data=data_dict)
+    df.to_csv(os.path.join(save_to, 'distances.csv'))
 
 
 def compute_distances(bboxes):
@@ -83,6 +109,13 @@ def boxes_dimensions(labels, imgs, new_h, new_w):
             boxes_w.append(item[2])
             boxes_h.append(item[3])
     return boxes_w, boxes_h
+
+
+def save_boxes_dims_to_csv(labels, imgs, new_h, new_w, save_to):
+    w, h = boxes_dimensions(labels, imgs, new_h, new_w)
+    data_dict = {'width': w, 'height': h}
+    df = pd.DataFrame(data=data_dict)
+    df.to_csv(os.path.join(save_to, 'boxes_dims.csv'))
 
 
 def plot_dimensions(labels_path, img_path, new_h, new_w):
@@ -202,10 +235,7 @@ def plot_distances(labels_path, img_path, new_h, new_w):
     # fig_distances.suptitle('Distances between centres of objects')
 
 
-def main():
-    cfg_path = 'eda_cfg.json'
-    with open(cfg_path, 'r') as f:
-        cfg = json.load(f)
+def plot(cfg):
     sets = (cfg['test_set'], cfg['validation_set'], cfg['train_set'])
     new_h = cfg['new_h']
     new_w = cfg['new_w']
@@ -217,6 +247,37 @@ def main():
         plot_dimensions(labels, imgs, new_h, new_w)
         plot_distances(labels, imgs, new_h, new_w)
     plt.show()
+
+
+def save_csv(cfg):
+    sets = {'Test set': cfg['test_set'], 'Validation set': cfg['validation_set'], 'Training set': cfg['train_set']}
+    new_h = cfg['new_h']
+    new_w = cfg['new_w']
+    for set_name, dataset in sets.items():
+        labels = du.list_dirs(dataset['labels'], '.txt')
+        imgs = du.list_dirs(dataset['images'], '.jpg')
+        imgs, labels = du.match_imgs_with_labels(imgs, labels)
+        save_to = os.path.join(cfg['save_to'], set_name)
+        if not os.path.exists(save_to):
+            os.makedirs(save_to)
+        bb_per_image_to_csv(labels, save_to)
+        save_distances_to_csv(imgs, labels, new_h, new_w, save_to)
+        save_boxes_dims_to_csv(labels, imgs, new_h, new_w, save_to)
+
+
+def main():
+    cfg_path = 'eda_cfg.json'
+    with open(cfg_path, 'r') as f:
+        cfg = json.load(f)
+    mode = cfg['mode']
+    if mode == 'plot':
+        plot(cfg)
+    elif mode == 'save_csv':
+        save_csv(cfg)
+    elif mode == 'summary':
+        summary(cfg)
+    else:
+        raise ValueError('Unknown mode')
 
 
 if __name__ == '__main__':

@@ -25,6 +25,8 @@ def predictions_to_boxes(in_labels, img_size, grid_size, sqrt, last_dim_size=6):
 def convert_topleft_to_centre(bboxes):
     if isinstance(bboxes, (list,)):
         bboxes = np.array(bboxes, ndmin=2)
+    if bboxes.size == 0:
+        return []
     bboxes[:, 0] = bboxes[:, 0] + np.round(np.divide(bboxes[:, 2], 2))
     bboxes[:, 1] = bboxes[:, 1] + np.round(np.divide(bboxes[:, 3], 2))
     return bboxes

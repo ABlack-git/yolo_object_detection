@@ -1,6 +1,7 @@
 import bbox_utils as bbu
 import numpy as np
 import xml.etree.ElementTree as et
+import json
 
 """
 This class is designed to process big data files that cover entire video. 
@@ -34,7 +35,7 @@ class LabelCreator:
                 bbu.resize_boxes(bboxes, old_shape, new_shape)
         return bboxes
 
-    def get_boxes_for_image(self, labels_path):
+    def get_boxes_for_image(self, labels_path, img_name=None):
         bboxes = []
         if self.l_type == 'txt_vdrone':
             data = self.read_txt(labels_path)
@@ -42,7 +43,22 @@ class LabelCreator:
         elif self.l_type == 'my_ds':
             data = self.read_txt(labels_path)
             bboxes = self.get_my_ds_bboxes(data)
+        elif self.l_type == 'json_coco':
+            if img_name is None:
+                raise ValueError('You should provide image name if coco dataset is chosen')
+            data = self.read_json(labels_path)
+            bboxes = self.get_coco_bboxes(data, img_name)
         return bboxes
+
+    def read_json(self, labels_path):
+        if labels_path in self.data_dict:
+            return self.data_dict[labels_path]
+        print('Reading json...')
+        with open(labels_path) as f:
+            data = json.load(f)
+        print('Loading complete.')
+        self.data_dict.update({labels_path: data})
+        return data
 
     def read_xml(self, labels_path):
         if labels_path in self.data_dict:
@@ -51,6 +67,19 @@ class LabelCreator:
             self.data_dict.update({labels_path: et.parse(labels_path)})
 
         return self.data_dict[labels_path]
+
+    def get_coco_bboxes(self, data, img_name):
+        img_id = -1
+        for img_info in data['images']:
+            if img_info['file_name'] == img_name:
+                img_id = img_info['id']
+        if img_id == -1:
+            raise ValueError('image id is not found')
+        bboxes = []
+        for obj in data['annotations']:
+            if obj['image_id'] == img_id and obj['category_id'] == 1:
+                bboxes.append([int(x) for x in obj['bbox']])
+        return bbu.convert_topleft_to_centre(bboxes)
 
     def read_txt(self, labels_path):
         """

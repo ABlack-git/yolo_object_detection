@@ -5,9 +5,9 @@ import image_utils
 import stats_utils as su
 import os
 import time
-import argparse
 import json
 import bbox_utils as bbu
+import sys
 
 
 def test_model(net, images, labels, iou_threshold, save_stats, path=''):
@@ -15,7 +15,7 @@ def test_model(net, images, labels, iou_threshold, save_stats, path=''):
     img_size = {"width": net.img_size[0], "height": net.img_size[1]}
     grid_size = {"width": net.grid_size[0], "height": net.grid_size[1]}
     params = {"img_size": img_size, "grid_size": grid_size, "no_boxes": net.no_boxes, "shuffle": True, "sqrt": net.sqrt,
-              'keep_asp_ratio': net.keep_asp_ratio}
+              'keep_asp_ratio': net.keep_asp_ratio, 'normalize_img': net.normalize_img}
     conf = {"images": images, "annotations": labels, "configuration": params}
     conf = json.dumps(conf)
 
@@ -56,11 +56,16 @@ def show_images_with_boxes(net, testing_set, draw_centre=True, draw_grid=False, 
         t0_resize = time.time()
         img = image_utils.resize_img(img, net.img_size[1], net.img_size[0], keep_asp_ratio=net.keep_asp_ratio)
 
-        # if net.keep_asp_ratio: pad
+        if net.keep_asp_ratio:
+            img = image_utils.pad_img(img, net.img_size[1], net.img_size[0])
+
+        x = img
+        if net.normalize_img:
+            x = img / 255.0
 
         t_resize = time.time() - t0_resize
         t0_pred = time.time()
-        preds = net.get_predictions([img])
+        preds = net.get_predictions([x])
         t_preds = time.time() - t0_pred
         t0_draw = time.time()
         if draw_centre and preds:
@@ -81,24 +86,21 @@ def show_images_with_boxes(net, testing_set, draw_centre=True, draw_grid=False, 
     return compute_time
 
 
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-net_cfg', action='store', type=str, help='Path to configuration file of the network')
-    parser.add_argument('-demos_cfg', action='store', type=str, help='Path to configuration file for demos')
-    args = parser.parse_args()
-    if not os.path.isfile(args.net_cfg):
-        parser.error('Path to configuration file of the network should point to existing file.')
-    if not os.path.isfile(args.demos_cfg):
-        parser.error('Path to configuration file for demos should point to existing file.')
-    return args
-
-
 def main():
-    args = parse_args()
-    with open(args.demos_cfg, 'r') as file:
-        config = json.load(file)
+    config = None
+    if len(sys.argv) > 1:
+        if os.path.exists(sys.argv[1]) and os.path.isfile(sys.argv[1]):
+            with open(sys.argv[1], 'r') as file:
+                config = json.load(file)
+        else:
+            print('Path should point to existing file')
+            exit(1)
+    else:
+        print('Enter path to demos_cfg file as first argument')
+        exit(1)
+    net_cfg = config['net_cfg']
+    net = YoloV0(net_cfg)
 
-    net = YoloV0(args.net_cfg)
     net.restore(path=config['weights'])
     modes = config['configuration']['modes']
     if modes['images']:

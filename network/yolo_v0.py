@@ -56,6 +56,7 @@ class YoloV0(ANN):
         self.write_grads = False
         self.sqrt = True
         self.keep_asp_ratio = False
+        self.normalize_img = False
         # Model initialization
         self.open_sess()
         self.__create_network()
@@ -199,6 +200,9 @@ class YoloV0(ANN):
                 self.model_version = parser.get(section, 'model_version')
                 self.optimizer_type = parser.get(section, 'optimizer')
                 # optional
+                if parser.has_option(section, 'normalize_img'):
+                    self.normalize_img = parser.getboolean(section, 'normalize_img')
+                    # else it is false
                 if parser.has_option(section, 'weight_decay'):
                     self.weight_decay = parser.getfloat(section, 'weight_decay')
                 if parser.has_option(section, 'lr_policy'):
@@ -290,16 +294,23 @@ class YoloV0(ANN):
                                                                       padding, name, write_summary)
                 last_out = self.layers_list[name]
 
+            elif section.startswith('DROPOUT'):
+                name = section
+                rate = parser.getfloat(section, 'rate')
+                mode = None
+                if parser.has_option(section, 'mode'):
+                    mode = parser.get(section, 'mode')
+                if mode is not None:
+                    self.layers_list[name] = super().create_dropout(last_out, rate, name, mode)
+                else:
+                    self.layers_list[name] = super().create_dropout(last_out, rate, name)
+                last_out = self.layers_list[name]
+
             elif section.startswith('FC'):
                 name = section
                 w_shape = [int(val) for val in parser.get(section, 'w_shape').split(',')]
                 batch_norm = parser.getboolean(section, 'batch_norm')
                 weight_init = parser.get(section, 'weight_init')
-                dropout = parser.getboolean(section, 'dropout')
-                if parser.has_option(section, 'dropout_param'):
-                    dropout_param = parser.getfloat(section, 'dropout_param')
-                else:
-                    dropout_param = None
                 if parser.has_option(section, 'trainable'):
                     trainable = parser.getboolean(section, 'trainable')
                 else:
@@ -307,8 +318,7 @@ class YoloV0(ANN):
                 if parser.has_option(section, 'reshape'):
                     reshape = parser.getint(section, 'reshape')
                     last_out = tf.reshape(last_out, [-1, reshape])
-                self.layers_list[name] = super().create_fc_layer(last_out, w_shape, name, dropout=dropout,
-                                                                 dropout_param=dropout_param, weight_init=weight_init,
+                self.layers_list[name] = super().create_fc_layer(last_out, w_shape, name, weight_init=weight_init,
                                                                  batch_norm=batch_norm, trainable=trainable)
                 last_out = self.layers_list[name]
             else:
@@ -363,7 +373,8 @@ class YoloV0(ANN):
                   'configuration': {"img_size": {'width': self.img_size[0], 'height': self.img_size[1]},
                                     'grid_size': {'width': self.grid_size[0], 'height': self.grid_size[1]},
                                     'no_boxes': self.no_boxes,
-                                    'shuffle': True, 'sqrt': self.sqrt, 'keep_asp_ratio': self.keep_asp_ratio}}
+                                    'shuffle': True, 'sqrt': self.sqrt, 'keep_asp_ratio': self.keep_asp_ratio,
+                                    'normalize_img': self.normalize_img}}
         train_set = DatasetGenerator(json.dumps(ts_cfg))
         train_test_set = None
         if do_test:
@@ -372,7 +383,8 @@ class YoloV0(ANN):
                           'configuration': {"img_size": {'width': self.img_size[0], 'height': self.img_size[1]},
                                             'grid_size': {'width': self.grid_size[0], 'height': self.grid_size[1]},
                                             'no_boxes': self.no_boxes,
-                                            'shuffle': True, 'sqrt': self.sqrt, 'keep_asp_ratio': self.keep_asp_ratio}}
+                                            'shuffle': True, 'sqrt': self.sqrt, 'keep_asp_ratio': self.keep_asp_ratio,
+                                            'normalize_img': self.normalize_img}}
                 valid_set = DatasetGenerator(json.dumps(vs_cfg))
                 ts_cfg['configuration']['subset_length'] = valid_set.get_dataset_size()
             else:
@@ -445,18 +457,20 @@ class YoloV0(ANN):
             self.save(save_path, self.model_version)
             if do_test and (valid_set is not None):
                 val_stats = self.__validate_model(valid_set, 0.5, prefix='Validation model on validation set')
-                self.log_scalar('validation_avg_prec', val_stats[0], summary_writer, 'Statistics')
-                self.log_scalar('validation_avg_recall', val_stats[1], summary_writer, 'Statistics')
-                self.log_scalar('validation_avg_iou', val_stats[2], summary_writer, 'Statistics')
-                self.log_scalar('validation_avg_conf_tp', val_stats[3], summary_writer, 'Statistics')
-                self.log_scalar('validation_avg_conf_fp', val_stats[4], summary_writer, 'Statistics')
+                self.log_scalar('Statistics', 'validation_avg_prec', val_stats[0], summary_writer, )
+                self.log_scalar('Statistics', 'validation_avg_recall', val_stats[1], summary_writer)
+                self.log_scalar('Statistics', 'validation_avg_iou', val_stats[2], summary_writer)
+                self.log_scalar('Statistics', 'validation_avg_conf_tp', val_stats[3], summary_writer)
+                self.log_scalar('Statistics', 'validation_avg_conf_fp', val_stats[4], summary_writer)
+                self.log_scalar('Statistics', 'validation_num_of_tp', val_stats[5], summary_writer)
             if do_test:
                 val_stats = self.__validate_model(train_test_set, 0.5, prefix='Validation model on subset of train set')
-                self.log_scalar('train_avg_prec', val_stats[0], summary_writer, 'Statistics')
-                self.log_scalar('train_avg_recall', val_stats[1], summary_writer, 'Statistics')
-                self.log_scalar('train_avg_iou', val_stats[2], summary_writer, 'Statistics')
-                self.log_scalar('train_avg_conf_tp', val_stats[3], summary_writer, 'Statistics')
-                self.log_scalar('train_avg_conf_fp', val_stats[4], summary_writer, 'Statistics')
+                self.log_scalar('Statistics', 'train_avg_prec', val_stats[0], summary_writer)
+                self.log_scalar('Statistics', 'train_avg_recall', val_stats[1], summary_writer)
+                self.log_scalar('Statistics', 'train_avg_iou', val_stats[2], summary_writer)
+                self.log_scalar('Statistics', 'train_avg_conf_tp', val_stats[3], summary_writer)
+                self.log_scalar('Statistics', 'train_avg_conf_fp', val_stats[4], summary_writer)
+                self.log_scalar('Statistics', 'train_num_of_tp', val_stats[5], summary_writer)
 
     def tf_iou(self, y_true, y_pred):
         """
@@ -528,12 +542,18 @@ class YoloV0(ANN):
 
                 return tf.truediv(intersection, union, name='IoU')
 
-    def log_scalar(self, tag, value, summary_writer, name):
-        with tf.name_scope(name):
-            summary = tf.Summary(value=[tf.Summary.Value(tag=tag, simple_value=value)])
+    def log_scalar(self, scope_name, value_name, value, summary_writer):
+        tag = scope_name + '/' + value_name
+        summary = tf.Summary(value=[tf.Summary.Value(tag=tag, simple_value=value)])
         summary_writer.add_summary(summary, tf.train.global_step(self.sess, self.global_step))
 
     def get_predictions(self, x):
+        """
+        !!!NOTE THAT WE DON'T NORMALIZE IMAGE IN THIS METHOD, SO TAKE CARE OF THIS BEFORE!!!
+
+        :param x: list of input images. If only one image provided wrap it in the list.
+        :return: predictions
+        """
         if x is None:
             raise TypeError
         preds = self.sess.run(self.predictions, feed_dict={self.x: x, self.ph_train: False})

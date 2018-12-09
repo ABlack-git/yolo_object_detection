@@ -60,8 +60,7 @@ class ANN:
         tf.logging.info('   batch_norm: %s' % batch_norm)
         return out
 
-    def create_fc_layer(self, x, shape, name, dropout=False, dropout_param=None,
-                        weight_init='Normal', batch_norm=True, trainable=True):
+    def create_fc_layer(self, x, shape, name, weight_init='Normal', batch_norm=True, trainable=True):
         with tf.variable_scope(name):
             if weight_init == 'Normal':
                 weights = tf.truncated_normal(shape, stddev=0.1)
@@ -81,12 +80,6 @@ class ANN:
                 b = tf.Variable(tf.constant(0.1, shape=[shape[1]]), name="biases", trainable=trainable)
                 self.summary_list.append(tf.summary.histogram("biases", b))
                 out = tf.add(tf.matmul(x, w), b, name='weighted_sum')
-            if dropout:
-                if dropout_param is not None:
-                    out = tf.nn.dropout(out, dropout_param, name='Dropout')
-                else:
-                    tf.logging.warning('Dropout flag was set to True in layer %s, but parameter was not specified. '
-                                       'Continue without dropout layer' % name)
             out = tf.identity(out, name='output')
             self.summary_list.append(tf.summary.histogram('Output', out))
             tf.logging.info('Layer %s created with parameters: ' % name)
@@ -94,10 +87,6 @@ class ANN:
             tf.logging.info('   weights init: %s' % weight_init)
             tf.logging.info('   trainable: %s' % trainable)
             tf.logging.info('   batch_norm: %s' % batch_norm)
-            tf.logging.info('   dropout: %s' % dropout)
-            if dropout:
-                tf.logging.info('   dropout parameter: %f' % dropout_param)
-
             return out
 
     def create_activation_layer(self, x, act_type, params, name, write_summary):
@@ -136,10 +125,30 @@ class ANN:
             tf.logging.info('   padding: %s' % padding)
             return pooling
 
+    def create_dropout(self, x, rate, name, mode='regular_dropout'):
+        mode = mode.strip(" '\"")
+        with tf.name_scope(name):
+            if mode == 'spatial_dropout':
+                shape = tf.shape(x)
+                out = tf.layers.dropout(x, rate, noise_shape=[shape[0], 1, 1, shape[3]], training=self.ph_train,
+                                        name='Spatial_dropout')
+            elif mode == 'regular_dropout':
+                out = tf.layers.dropout(x, rate, training=self.ph_train, name='Dropout')
+            else:
+                out = None
+                raise ValueError('Unknown mode.')
+        tf.logging.info('Layer %s created with parameters: ' % name)
+        tf.logging.info('   mode = {}'.format(mode))
+        tf.logging.info('   rate = {:.2f}'.format(rate))
+        return out
+
     def learning_rate(self, lr, g_step, hp, lr_type, offset=0):
+        lr_type = lr_type.replace(" ", "")
         if lr_type == 'const':
             return lr
         if lr_type == 'exp_rise':
             return lr * math.exp(hp * (g_step - offset))
         if lr_type == 'exp_decay':
             return lr * math.exp(-hp * (g_step - offset))
+        else:
+            raise ValueError('Unknown learning rate type')

@@ -1,19 +1,49 @@
 {
-  "mode": "sample",
+  "mode": "augment",
   "data_type": "images",
   "path_types": {
     "data": "folders",
-    "annotations": "single_file"
+    "annotations": "folders"
   },
-  "labels_type": "json_coco",
-  "frame_w": 1440,
-  "frame_h": 810,
-  "save_location": "/Volumes/TRANSCEND/Data Sets/COCO_HUMANS/Training Set",
+  "labels_type": "my_ds",
+  "frame_w": 800,
+  "frame_h": 800,
+  "save_location": "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Augmented",
   "checkpoint_path": null,
   "data_path": [
-    "/Users/mac/Downloads/train2014"
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Images/MiniDrone",
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Images/Okutama",
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Images/UFC",
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Images/VIRAT",
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Images/VisDrone"
   ],
   "labels_path": [
-    "/Users/mac/Downloads/annotations/instances_train2014.json"
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Annotations/MiniDrone",
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Annotations/Okutama",
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Annotations/UFC",
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Annotations/VIRAT",
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Annotations/VisDrone"
+  ],
+  "aug_seq": [
+    {
+      "name": "FLIP",
+      "prob": 0.25
+    },
+    {
+      "name": "HSV",
+      "hue": 20,
+      "sat": 50,
+      "brightness": 50
+    },
+    {
+      "name": "TRANSLATE",
+      "translate": 0.3,
+      "diff": true
+    },
+    {
+      "name": "SCALE",
+      "scale": 0.3,
+      "diff": false
+    }
   ]
 }

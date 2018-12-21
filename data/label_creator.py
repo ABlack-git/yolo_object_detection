@@ -219,4 +219,4 @@ class LabelCreator:
         return bboxes
 
     def get_my_ds_bboxes(self, data):
-        return data
+        return np.array(data)

@@ -3,12 +3,14 @@ Purpose of this file is to verify that all videos have correct labels.
 Loads videos and draw bboxes on them and displays them.
 """
 import cv2
-from data.label_creator import LabelCreator
+import os
+import json
+
 import image_utils as imgu
 import bbox_utils as bbu
 import data_utils as du
-import os
-import json
+
+from data.label_creator import LabelCreator
 
 
 class DatasetDisplay:
@@ -21,7 +23,7 @@ class DatasetDisplay:
 
     def __init__(self, cfg):
         self.data_type = ''
-        self.data = {}
+        self.data = dict()
         self.l_type = ''
         self.frame_w = -1
         self.frame_h = -1

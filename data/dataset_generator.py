@@ -3,7 +3,9 @@ import random
 import cv2
 import numpy as np
 import json
+
 import image_utils as imu
+import data_utils as du
 
 
 class DatasetGenerator:
@@ -58,14 +60,15 @@ class DatasetGenerator:
 
     def __get_data(self):
         for img_d, lbl_d in zip(self.img_dir, self.labels_dir):
-            self.data_imgs += [os.path.join(img_d, f) for f in os.listdir(img_d) if
-                               f.endswith('.jpg') and not f.startswith('.')]
-            self.data_labels += [os.path.join(lbl_d, f) for f in os.listdir(lbl_d) if
-                                 f.endswith('.txt') and not f.startswith('.')]
+            for img_path in du.list_dirs(img_d, file_ext='.jpg'):
+                self.data_imgs.append(img_path)
+                base_name = os.path.splitext(os.path.basename(img_path))[0]
+                label_path = os.path.join(lbl_d, base_name + '.txt')
+                if os.path.exists(label_path) and os.path.isfile(label_path):
+                    self.data_labels.append(label_path)
+                else:
+                    raise ValueError('Can not found label {} for image {}'.format(label_path, img_path))
 
-        self.data_labels.sort()
-        self.data_imgs.sort()
-        # shuffle dataset
         self.__reshuffle()
         # check if img correspond to label
         for a, b in zip(self.data_imgs, self.data_labels):

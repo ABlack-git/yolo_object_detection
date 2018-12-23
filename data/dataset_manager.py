@@ -250,11 +250,14 @@ class DSManager:
             bboxes = bbu.convert_center_to_2points(bboxes)
             # bboxes = bboxes.astype(float)
             img, bboxes = seq(img, bboxes)
+            if bboxes.size <= 0:
+                continue
+            if np.any(bboxes <= 0):
+                continue
             img = np.ascontiguousarray(img, dtype=np.uint8)
-            imu.draw_bbox(bboxes, img)
             img = img[..., ::-1]
             cv2.imshow('DataAug', img)
-            name = os.path.basename(img_path).split('.')[0]
+            name = os.path.basename(os.path.splitext(img_path)[0])
             bboxes = bbu.convert_2points_to_center(bboxes)
             self.__save_data(img, bboxes, name, prefix='aug')
             su.progress_bar(i, len(self.data), prefix='Augmenting dataset')
@@ -266,13 +269,13 @@ class DSManager:
             os.makedirs(os.path.join(self.save_location, 'Annotations'))
         img_dir = os.path.join(self.save_location, 'Images')
         label_dir = os.path.join(self.save_location, 'Annotations')
-        img_name = prefix + name + ".jpg"
+        img_name = prefix + "_" + name + ".jpg"
         counter = 0
         while os.path.exists(os.path.join(img_dir, img_name)):
             counter += 1
             img_name = prefix + '_' + str(counter) + "_" + name + ".jpg"
         cv2.imwrite(os.path.join(img_dir, img_name), data)
-        label_name = prefix + name + '.txt'
+        label_name = prefix + "_" + name + '.txt'
         if counter > 0:
             label_name = prefix + '_' + str(counter) + "_" + name + ".txt"
         np.savetxt(os.path.join(label_dir, label_name), bboxes, fmt='%d')

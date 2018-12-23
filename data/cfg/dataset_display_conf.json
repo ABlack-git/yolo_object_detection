@@ -8,10 +8,10 @@
   "frame_w": 800,
   "frame_h": 800,
   "data_path": [
-    "/Volumes/TRANSCEND/Data Sets/COCO_HUMANS/Training Set/Images"
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Augmented/Images"
   ],
   "labels_path": [
-    "/Volumes/TRANSCEND/Data Sets/COCO_HUMANS/Training Set/Annotations"
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Augmented/Annotations"
   ]
 }
 

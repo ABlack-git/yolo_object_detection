@@ -200,3 +200,10 @@ class DatasetGenerator:
         bboxes = self.__resize_and_adjust_labels((h_0, w_0), (h_1, w_1), boxes, resize_only)
 
         return img, bboxes
+
+
+if __name__ == '__main__':
+    dsg = DatasetGenerator("cfg/dataset_generator_conf.json")
+    print(dsg.get_dataset_size())
+    print(dsg.get_number_of_batches(64))
+

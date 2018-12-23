@@ -1,17 +1,21 @@
-# !!!subset_length is an optional field!!! #
-
 {
   "images": [
-    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Images/MiniDrone",
-    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Images/Okutama",
-    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Images/UFC",
-    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Images/VIRAT"
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Images/MiniDrone",
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Images/Okutama",
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Images/UFC",
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Images/VIRAT",
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Images/AUG_2",
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Images/AUG_1",
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Images/VisDrone"
   ],
   "annotations": [
-    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Annotations/MiniDrone",
-    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Annotations/Okutama",
-    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Annotations/UFC",
-    "/Volumes/TRANSCEND/Data Sets/DataSet/Testing set/Annotations/Virat"
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Annotations/MiniDrone",
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Annotations/Okutama",
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Annotations/UFC",
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Annotations/Virat",
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Annotations/AUG_2",
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Annotations/AUG_1",
+    "/Volumes/TRANSCEND/Data Sets/NewDataSet/Training set/Annotations/VisDrone"
   ],
   "configuration": {
     "img_size": {
@@ -25,7 +29,7 @@
     "no_boxes": 1,
     "shuffle": true,
     "sqrt": true,
-    "subset_length": 100,
-    "keep_asp_ration": true
+    "keep_asp_ratio": true,
+    "normalize_img": true
   }
 }

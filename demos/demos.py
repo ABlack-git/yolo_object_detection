@@ -10,15 +10,16 @@ import bbox_utils as bbu
 import sys
 
 
-def test_model(net, images, labels, iou_threshold, save_stats, path=''):
+def test_model(net, images, labels, iou_threshold, save_stats, path='', subset_length=None):
     # construct json
     img_size = {"width": net.img_size[0], "height": net.img_size[1]}
     grid_size = {"width": net.grid_size[0], "height": net.grid_size[1]}
     params = {"img_size": img_size, "grid_size": grid_size, "no_boxes": net.no_boxes, "shuffle": True, "sqrt": net.sqrt,
               'keep_asp_ratio': net.keep_asp_ratio, 'normalize_img': net.normalize_img}
+    if subset_length is not None:
+        params.update({"subset_length": subset_length})
     conf = {"images": images, "annotations": labels, "configuration": params}
     conf = json.dumps(conf)
-
     ts = DatasetGenerator(conf)
     batch = ts.get_minibatch(net.batch_size, resize_only=True)
     stats = []
@@ -109,8 +110,13 @@ def main():
                                config['configuration']['print_time'])
 
     if modes['stats']['enable']:
+        if "subset_length" in config['configuration']:
+            subset_length = config['configuration']['subset_length']
+        else:
+            subset_length = None
         test_model(net, config['images'], config['annotations'],
-                   config['configuration']['iou_threshold'], modes['stats']['save'], modes['stats']['path'])
+                   config['configuration']['iou_threshold'], modes['stats']['save'], modes['stats']['path'],
+                   subset_length=subset_length)
     net.close_sess()
 
 

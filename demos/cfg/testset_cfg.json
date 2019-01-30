@@ -27,7 +27,13 @@
         "save": false,
         "path": "E:\\Andrew\\Stats"
       },
-      "images": true,
+      "images": {
+        "enable": true,
+        "save_video": true,
+        "fps": 20,
+        "name": "test_set.avi",
+        "path": "E:\\Andrew\\Video"
+      },
       "video": false
     }
   }

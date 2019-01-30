@@ -43,8 +43,12 @@ def test_model(net, images, labels, iou_threshold, save_stats, path='', subset_l
           'Total num of FN: {0[7]}'.format(final_stats))
 
 
-def show_images_with_boxes(net, testing_set, draw_centre=True, draw_grid=False, delay=0,
+def show_images_with_boxes(net, testing_set, mode_config, draw_centre=True, draw_grid=False, delay=0,
                            print_time=True):
+    if mode_config['save_video']:
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        out = cv2.VideoWriter(mode_config['name'], fourcc, mode_config['fps'], (net.img_size[0], net.img_size[1]))
+
     list_of_imgs = image_utils.list_of_images(testing_set)
     compute_time = []
     for img_path in list_of_imgs:
@@ -76,6 +80,8 @@ def show_images_with_boxes(net, testing_set, draw_centre=True, draw_grid=False, 
         image_utils.draw_bbox(preds[0], img)
         t_draw = time.time() - t0_draw
         cv2.imshow(net.model_version, img)
+        if mode_config['save_video']:
+            out.write(img.astype('uint8'))
         k = cv2.waitKey(delay)
         compute_time.append([t_read, t_resize, t_preds, t_draw])
         t_total = t_read + t_resize + t_preds + t_draw
@@ -83,7 +89,13 @@ def show_images_with_boxes(net, testing_set, draw_centre=True, draw_grid=False, 
             print('Read time: %.3f, Resize time: %.3f, Prediction time: %.3f, Draw time: %.3f, Total time: %.3f' % (
                 t_read, t_resize, t_preds, t_draw, t_total))
         if k == 27:
+            if mode_config['save_video']:
+                out.release()
+            cv2.destroyAllWindows()
             break
+    if mode_config['save_video']:
+        out.release()
+    cv2.destroyAllWindows()
     return compute_time
 
 
@@ -104,8 +116,8 @@ def main():
 
     net.restore(path=config['weights'])
     modes = config['configuration']['modes']
-    if modes['images']:
-        show_images_with_boxes(net, config['images'], config['configuration']['draw_centers'],
+    if modes['images']["enable"]:
+        show_images_with_boxes(net, config['images'], modes['images'], config['configuration']['draw_centers'],
                                config['configuration']['draw_grid'], config['configuration']['delay'],
                                config['configuration']['print_time'])
 

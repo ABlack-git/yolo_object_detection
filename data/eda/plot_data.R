@@ -10,7 +10,7 @@ library(scales)
 bbpi_testset <- read.csv('/Users/mac/Documents/Study/IND/data_stats/complete_ds/csvs/Test set/boxes_per_image.csv')
 ggplot(bbpi_testset, aes(x=num.of.boxes))+
   #geom_bar(aes(y=..count../sum(..count..)))+
-  geom_histogram(binwidth = 2, aes(y=..count../sum(..count..)), color='black', size=0.25, fill='tomato1', center=1)+
+  geom_histogram(binwidth = 1, aes(y=..count../sum(..count..)), color='black', size=0.25, fill='tomato1', center=1)+
   #geom_histogram(binwidth = 5, aes(y=..count..), color='white', center=2.5)+
   scale_y_continuous(labels = scales::percent, breaks = seq(0, 0.9, by=0.025)) +
   scale_x_continuous(breaks = seq(0,500, by=10)) +
@@ -53,7 +53,7 @@ ggplot(dists_testset, aes(x=total.dist))+
 bbpi_valset <- read.csv('/Users/mac/Documents/Study/IND/data_stats/complete_ds/csvs/Validation set/boxes_per_image.csv')
 ggplot(bbpi_valset, aes(x=num.of.boxes))+
   #geom_bar(aes(y=..count../sum(..count..)))+
-  geom_histogram(binwidth = 2, aes(y=..count../sum(..count..)), color='black', size=0.25, fill='tomato1',center=1)+
+  geom_histogram(binwidth = 1, aes(y=..count../sum(..count..)), color='black', size=0.25, fill='tomato1',center=1)+
   #geom_histogram(binwidth = 5, aes(y=..count..), color='white', center=2.5)+
   scale_y_continuous(labels = scales::percent, breaks = seq(0, 0.9, by=0.025)) +
   scale_x_continuous(breaks = seq(0,500, by=10)) +
@@ -98,7 +98,7 @@ ggplot(dists_valset, aes(x=total.dist))+
 bbpi_trainset <- read.csv('/Users/mac/Documents/Study/IND/data_stats/complete_ds/csvs/Training set/boxes_per_image.csv')
 ggplot(bbpi_trainset, aes(x=num.of.boxes))+
   #geom_bar(aes(y=..count../sum(..count..)))+
-  geom_histogram(binwidth = 2, aes(y=..count../sum(..count..)), color='black', size=0.25, fill='tomato1',center=1)+
+  geom_histogram(binwidth = 1, aes(y=..count../sum(..count..)), color='black', size=0.25, fill='tomato1',center=1)+
   #geom_histogram(binwidth = 5, aes(y=..count..), color='white', center=2.5)+
   scale_y_continuous(labels = scales::percent, breaks = seq(0, 0.9, by=0.025)) +
   scale_x_continuous(breaks = seq(0,500, by=15)) +
